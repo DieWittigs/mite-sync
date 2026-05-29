@@ -17,8 +17,8 @@ import org.twittig.mite.mitesync.web.model.MiteEntryModel;
 import org.twittig.mite.mitesync.web.model.ProposalEntryModel;
 
 /**
- * Service zum Lesen und Schreiben von Time-Entries in der SOURCE-Mite-Instanz.
- * Im Gegensatz zu {@link MiteSyncService} schreibt dieser Service in die Quelle (nicht ins Ziel).
+ * Reads and writes time entries on the SOURCE Mite instance. Unlike {@link MiteSyncService},
+ * this service writes into the source (not the target).
  */
 @Service
 public class MiteBookingService {
@@ -38,7 +38,7 @@ public class MiteBookingService {
     this.sourceMiteClient = sourceMiteClient;
   }
 
-  /** Liest existierende Mite-Einträge für einen bestimmten Tag im Source-Projekt. */
+  /** Reads existing Mite entries for the given day from the source project. */
   public List<MiteEntryModel> getEntriesForDate(LocalDate date) {
     var entries =
         sourceMiteClient
@@ -55,7 +55,7 @@ public class MiteBookingService {
       MiteEntryModel m = new MiteEntryModel();
       m.setMiteId(e.getId() != null ? e.getId().getValue() : 0);
       m.setMinutes(e.getMinutes() != null ? e.getMinutes().getValue() : 0);
-      // note ist im JAXB-Modell als java.lang.Object deklariert (kein Wrapper-Inner-Class).
+      // note is declared as java.lang.Object in the JAXB model (no wrapper inner class).
       m.setNote(e.getNote() == null ? null : e.getNote().toString());
       m.setProjectId(e.getProjectId() != null ? e.getProjectId().getValue() : 0);
       m.setServiceId(e.getServiceId() != null ? e.getServiceId().getValue() : 0);
@@ -65,9 +65,9 @@ public class MiteBookingService {
   }
 
   /**
-   * Bucht eine Liste von Vorschlags-Einträgen am angegebenen Datum in der Source-Mite. Pro Eintrag
-   * wird das Default-Projekt + Service aus der Konfiguration verwendet. Fehler werden gesammelt,
-   * aber stoppen den Lauf nicht.
+   * Books the supplied proposal entries for the given date in the source Mite. Each entry uses
+   * the project + service from configuration. Per-entry errors are collected and do not abort
+   * the run.
    */
   public BookingResultModel book(LocalDate date, List<ProposalEntryModel> entries) {
     BookingResultModel result = new BookingResultModel();
@@ -104,11 +104,11 @@ public class MiteBookingService {
     TimeEntry te = new TimeEntry();
     te.setBillable(new TimeEntry.Billable());
 
-    // Hinweis JAXB-Modell von mite-java:
-    //   ProjectId.setValue(long) — int wird auto-gewidet
+    // mite-java JAXB model notes:
+    //   ProjectId.setValue(long) — int is widened automatically
     //   ServiceId.setValue(int)
-    //   Minutes.setValue(short) — explizit casten
-    //   DateAt.setValue(LocalDate) — kein String!
+    //   Minutes.setValue(short) — explicit cast required
+    //   DateAt.setValue(LocalDate) — not String
 
     TimeEntry.ProjectId p = new TimeEntry.ProjectId();
     p.setValue(Integer.parseInt(sourceProjectId));
@@ -126,7 +126,7 @@ public class MiteBookingService {
     d.setValue(date);
     te.setDateAt(d);
 
-    // note: setNote(Object) — String wird direkt akzeptiert (JAXB-Schema)
+    // note: setNote(Object) — String is accepted directly (per the JAXB schema)
     te.setNote(pe.getNote());
 
     return te;

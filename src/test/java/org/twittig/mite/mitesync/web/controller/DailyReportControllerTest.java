@@ -51,7 +51,7 @@ class DailyReportControllerTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.date").value("2025-04-28"))
-                .andExpect(jsonPath("$.dayOfWeek").value("Mo"))
+                .andExpect(jsonPath("$.dayOfWeek").value("Mon"))
                 .andExpect(jsonPath("$.proposalTotalMinutes").value(375));
     }
 
@@ -184,12 +184,12 @@ class DailyReportControllerTest {
                 .andExpect(jsonPath("$.totalMinutesCreated").value(0));
     }
 
-    // -------- Hilfsmethoden --------
+    // -------- Helpers --------
 
     private DailyReportModel buildReport(LocalDate date) {
         DailyReportModel m = new DailyReportModel();
         m.setDate(date);
-        m.setDayOfWeek("Mo");
+        m.setDayOfWeek("Mon");
         m.setCalendarEvents(List.of());
         m.setAlreadyBookedInMite(List.of());
         m.setDevOpsActivityOnDate(List.of());
@@ -210,9 +210,9 @@ class DailyReportControllerTest {
     }
 
     /**
-     * Hilfs-Matcher: prüft ob das zweite Argument ein PbiAssignmentModel mit dem gegebenen
-     * targetHours-Wert ist. Da @Captor in WebMvcTest umständlich ist, reicht verify() ohne
-     * tiefe Inspektion — die targetHours-Übergabe ist durch den 200-Status implizit belegt.
+     * Helper matcher: checks that the second argument is a PbiAssignmentModel with the given
+     * targetHours value. Because @Captor in WebMvcTest is awkward, a plain verify() is enough —
+     * the targetHours pass-through is implicitly confirmed by the 200 status.
      */
     private org.twittig.mite.mitesync.web.model.PbiAssignmentModel argCaptor(double targetHours) {
         return org.mockito.ArgumentMatchers.argThat(

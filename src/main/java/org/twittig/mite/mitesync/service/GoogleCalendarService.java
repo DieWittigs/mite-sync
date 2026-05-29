@@ -34,9 +34,9 @@ import org.springframework.stereotype.Service;
 import org.twittig.mite.mitesync.web.model.CalendarEventModel;
 
 /**
- * Service zum Lesen von Google Calendar Events via Calendar API (OAuth2). Beim ersten Aufruf öffnet
- * sich ein Browser-Fenster für den Authorization Code Flow; das Refresh Token wird im
- * tokens-directory persistiert, sodass nachfolgende Aufrufe ohne User-Interaktion laufen.
+ * Reads Google Calendar events through the Calendar API (OAuth2). The first call opens a browser
+ * window for the authorization code flow; the refresh token is persisted in the tokens directory
+ * so subsequent calls run without user interaction.
  */
 @Service
 public class GoogleCalendarService {
@@ -62,10 +62,10 @@ public class GoogleCalendarService {
   private volatile Calendar calendarClient;
 
   /**
-   * Liefert alle Events des angegebenen Tages (nach Aufrundung), filtert skip-summaries raus.
+   * Returns all events for the given day (after rounding), filtering out skip-summaries.
    *
-   * <p>Beim ersten Aufruf wird der OAuth-Flow ausgelöst (Browser-Popup zur Autorisierung).
-   * Nachfolgende Aufrufe nutzen das gespeicherte Refresh Token.
+   * <p>The first call triggers the OAuth flow (browser popup for authorization). Subsequent
+   * calls reuse the stored refresh token.
    */
   public List<CalendarEventModel> getEventsForDay(LocalDate date, int roundingStepMinutes) {
     Calendar client = ensureClient();
@@ -96,18 +96,18 @@ public class GoogleCalendarService {
 
       List<CalendarEventModel> result = new ArrayList<>();
       for (Event e : events.getItems()) {
-        // Nur timed Events (keine all-day)
+        // Timed events only (no all-day events)
         if (e.getStart() == null || e.getStart().getDateTime() == null) continue;
 
         LocalTime start = toLocalTime(e.getStart());
         LocalTime end = toLocalTime(e.getEnd());
         int minutes =
             (int) java.time.Duration.between(start, end).toMinutes();
-        // Wenn Event spätabends bzw. über Mitternacht endet (sollte selten sein), clamp auf 24h
+        // Clamp to 0 if the event runs past midnight (rare in practice)
         if (minutes < 0) minutes = 0;
 
         CalendarEventModel m = new CalendarEventModel();
-        m.setSummary(e.getSummary() == null ? "(kein Titel)" : e.getSummary());
+        m.setSummary(e.getSummary() == null ? "(no title)" : e.getSummary());
         m.setStartTime(start);
         m.setEndTime(end);
         m.setMinutes(minutes);
@@ -127,8 +127,8 @@ public class GoogleCalendarService {
   // ---------------------------------------------------------------------------
 
   /**
-   * Lazy + thread-safe Initialization. Beim ersten Aufruf wird der OAuth-Flow ausgelöst (öffnet
-   * Browser für Authorization). Nachfolgende Aufrufe sind silent (Refresh Token wird genutzt).
+   * Lazy and thread-safe initialization. The first call triggers the OAuth flow (browser popup
+   * for authorization). Subsequent calls are silent (refresh token is reused).
    */
   private Calendar ensureClient() {
     Calendar c = calendarClient;
@@ -176,12 +176,12 @@ public class GoogleCalendarService {
   }
 
   /**
-   * Findet den Response-Status des aktuellen Users (per "self": true). Falls nicht vorhanden, gibt
-   * "accepted" zurück (z. B. selbst erstellte Termine).
+   * Returns the response status of the current user (the attendee marked with "self": true). If
+   * none is present (e.g. the user created the event), returns "accepted".
    */
   private String extractMyResponseStatus(Event e) {
     if (e.getAttendees() == null || e.getAttendees().isEmpty()) {
-      return "accepted"; // selbst erstellt, kein Attendee-Eintrag
+      return "accepted"; // self-created, no attendee entry
     }
     for (EventAttendee a : e.getAttendees()) {
       if (Boolean.TRUE.equals(a.getSelf())) {
@@ -197,7 +197,7 @@ public class GoogleCalendarService {
     return LocalDateTime.ofInstant(i, BERLIN).toLocalTime();
   }
 
-  /** Rundet auf das nächstgrößere Vielfache des Schrittes (z. B. 50 → 60 bei step=15). */
+  /** Rounds up to the next multiple of the step (e.g. 50 → 60 with step = 15). */
   static int roundUp(int minutes, int step) {
     if (minutes <= 0) return 0;
     if (step <= 0) return minutes;

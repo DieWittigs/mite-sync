@@ -20,20 +20,20 @@ import org.twittig.mite.mitesync.web.annotation.ValidDateRange;
 @ValidDateRange
 public class SyncJobModel implements Serializable {
 
-  @NotBlank(message = "Name darf nicht leer sein")
+  @NotBlank(message = "Name must not be blank")
   private String name;
 
   private String message;
   private boolean success;
 
-  @NotBlank(message = "Datum 'from' darf nicht leer sein")
+  @NotBlank(message = "'from' date must not be blank")
   @Pattern(
       regexp = "\\d{2}.\\d{2}.\\d{4}",
-      message = "Datum 'from' muss im Format 'dd.MM.yyyy' sein")
+      message = "'from' date must use the format 'dd.MM.yyyy'")
   private String from;
 
-  @NotBlank(message = "Datum 'to' darf nicht leer sein")
-  @Pattern(regexp = "\\d{2}.\\d{2}.\\d{4}", message = "Datum 'to' muss im Format 'dd.MM.yyyy' sein")
+  @NotBlank(message = "'to' date must not be blank")
+  @Pattern(regexp = "\\d{2}.\\d{2}.\\d{4}", message = "'to' date must use the format 'dd.MM.yyyy'")
   private String to;
 
   public SyncJobModel() {}

@@ -1,6 +1,6 @@
 package org.twittig.mite.mitesync.web.model;
 
-/** Schlanke Repräsentation eines existierenden Mite-Time-Entries (zum Anzeigen). */
+/** Lean representation of an existing Mite time entry (for display). */
 public class MiteEntryModel {
 
   private long miteId;

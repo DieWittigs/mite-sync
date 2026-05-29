@@ -18,13 +18,13 @@ import org.twittig.mite.mitesync.web.model.DailyReportModel;
 import org.twittig.mite.mitesync.web.model.PbiAssignmentModel;
 
 /**
- * REST-Controller für die tägliche Buchungs-Routine.
+ * REST controller for the daily booking routine.
  *
  * <p>Workflow:
  * <ol>
- *   <li>Client postet PBI-Zuordnung an /preview, bekommt einen Vorschlag mit allen Einträgen
- *   <li>Client editiert ggf. einzelne Einträge (Stunden, Notizen)
- *   <li>Client postet die finalen Einträge an /book — Mite-Buchungen werden erstellt
+ *   <li>The client posts the PBI assignment to /preview and receives a proposal with all entries.
+ *   <li>The client optionally edits individual entries (minutes, notes).
+ *   <li>The client posts the final entries to /book — Mite entries are created.
  * </ol>
  */
 @RestController
@@ -41,8 +41,8 @@ public class DailyReportController {
   }
 
   /**
-   * Erzeugt einen Tagesbericht inkl. Buchungsvorschlag. Datum im ISO-Format (YYYY-MM-DD) als
-   * Path-Variable, PBI-Zuordnung im Body.
+   * Builds a daily report including the booking proposal. The date is supplied as an ISO path
+   * variable (YYYY-MM-DD); the PBI assignment is in the request body.
    */
   @PostMapping("/{date}/preview")
   public ResponseEntity<DailyReportModel> preview(
@@ -54,8 +54,8 @@ public class DailyReportController {
   }
 
   /**
-   * Bucht die im Body übergebenen Einträge an dem Datum. Die Einträge kommen typischerweise vom
-   * /preview-Endpoint und können vorher manuell editiert worden sein.
+   * Books the entries from the request body for the given date. Entries typically come from the
+   * /preview endpoint and may have been edited manually by the user.
    */
   @PostMapping("/{date}/book")
   public ResponseEntity<BookingResultModel> book(

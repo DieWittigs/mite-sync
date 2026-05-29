@@ -5,12 +5,12 @@ import jakarta.validation.constraints.NotEmpty;
 import java.util.List;
 
 /**
- * Request body für POST /daily-reports/{date}/book — enthält die finalen Einträge (typischerweise
- * vom Preview-Endpoint generiert und ggf. vom User editiert).
+ * Request body for POST /daily-reports/{date}/book — carries the final entries (typically
+ * produced by the preview endpoint and optionally edited by the user).
  */
 public class BookingRequestModel {
 
-  @NotEmpty(message = "entries darf nicht leer sein")
+  @NotEmpty(message = "entries must not be empty")
   @Valid
   private List<ProposalEntryModel> entries;
 

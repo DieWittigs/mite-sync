@@ -28,16 +28,16 @@ public class DateRangeValidator implements ConstraintValidator<ValidDateRange, S
       SyncJobModel syncJobModel, ConstraintValidatorContext constraintValidatorContext) {
 
     if (syncJobModel.getFrom() == null || syncJobModel.getTo() == null) {
-      return true; // @NotBlank prüft das bereits
+      return true; // @NotBlank already covers this
     }
 
     try {
       LocalDate from = LocalDate.parse(syncJobModel.getFrom(), formatter);
       LocalDate to = LocalDate.parse(syncJobModel.getTo(), formatter);
-      // Same-day Syncs sind erlaubt (z. B. Daily-Sync für nur einen Tag).
+      // Same-day syncs are allowed (e.g. a daily sync covering only one day).
       return !from.isAfter(to);
     } catch (Exception e) {
-      return false; // Ungültiges Datum
+      return false; // invalid date
     }
   }
 }

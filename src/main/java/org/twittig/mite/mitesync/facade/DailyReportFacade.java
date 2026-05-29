@@ -18,10 +18,10 @@ import org.twittig.mite.mitesync.web.model.ProposalEntryModel;
 import org.twittig.mite.mitesync.web.model.WorkItemModel;
 
 /**
- * Orchestriert den Daily-Report-Workflow: liest Calendar + DevOps + Mite, generiert Vorschlag.
+ * Orchestrates the daily-report workflow: reads Calendar + DevOps + Mite, builds a proposal.
  *
- * <p>Die Buchung selbst läuft in einer separaten Methode (für die Review-Pause zwischen Preview und
- * Book).
+ * <p>The actual booking lives in a separate method to allow a manual review pause between
+ * preview and book.
  */
 @Component
 public class DailyReportFacade {
@@ -45,7 +45,7 @@ public class DailyReportFacade {
     this.bookingProposalService = bookingProposalService;
   }
 
-  /** Erzeugt den kompletten Tagesbericht inklusive Buchungsvorschlag. */
+  /** Builds the full daily report including the booking proposal. */
   public DailyReportModel preview(LocalDate date, PbiAssignmentModel pbiAssignment) {
     List<CalendarEventModel> events =
         googleCalendarService.getEventsForDay(date, roundingStepMinutes);
@@ -58,7 +58,7 @@ public class DailyReportFacade {
 
     DailyReportModel m = new DailyReportModel();
     m.setDate(date);
-    m.setDayOfWeek(date.getDayOfWeek().getDisplayName(java.time.format.TextStyle.SHORT, Locale.GERMAN));
+    m.setDayOfWeek(date.getDayOfWeek().getDisplayName(java.time.format.TextStyle.SHORT, Locale.ENGLISH));
     m.setCalendarEvents(events);
     m.setAlreadyBookedInMite(alreadyBooked);
     m.setDevOpsActivityOnDate(changedToday);
@@ -68,7 +68,7 @@ public class DailyReportFacade {
     return m;
   }
 
-  /** Bucht die übergebenen Einträge in die Source-Mite. */
+  /** Books the supplied entries into the source Mite. */
   public BookingResultModel book(LocalDate date, List<ProposalEntryModel> entries) {
     return miteBookingService.book(date, entries);
   }

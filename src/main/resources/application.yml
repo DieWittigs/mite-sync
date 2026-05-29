@@ -10,15 +10,15 @@ logging:
         logging:
           mite: "DEBUG"
 
-# Alle Werte werden typischerweise via Umgebungsvariablen gesetzt
-# (siehe .env.example und docker-compose.yml).
+# All values are typically set via environment variables
+# (see .env.example and docker-compose.yml).
 mite-sync:
   source:
     host: ""
     api-key: ""
     project-id: ""
     service-id: ""
-    # Sammel-PBI für Meeting-Notizen (alle Kalender-Events landen unter dieser Nummer)
+    # Collector PBI for meeting notes (all calendar events are booked under this number)
     meeting-collector-pbi: ""
   target:
     host: ""
@@ -26,27 +26,27 @@ mite-sync:
     project-id: ""
     service-id: ""
 
-# Daily-Reports: Calendar + DevOps + Booking-Logik
+# Daily-Reports: Calendar + DevOps + booking logic
 daily-reports:
   google-calendar:
-    # Google Cloud Project mit aktivierter Calendar API. Setup-Anleitung in HELP.md.
-    # Pfad zur OAuth2 client_secret.json (lokal heruntergeladen von Google Cloud Console)
+    # Google Cloud project with the Calendar API enabled. Setup steps in HELP.md.
+    # Path to the OAuth2 client_secret.json (downloaded from the Google Cloud Console)
     client-secret-file: "${user.home}/.mite-sync/google-client-secret.json"
-    # Verzeichnis für persistente Tokens (refresh token wird hier abgelegt nach erstem Login)
+    # Directory for persistent tokens (refresh token is stored here after the first login)
     tokens-directory: "${user.home}/.mite-sync/google-tokens"
-    # Welcher Kalender gelesen wird ("primary" für den Haupt-Kalender des Accounts,
-    # alternativ eine spezifische Kalender-ID)
+    # Which calendar to read ("primary" for the account's main calendar, otherwise a specific
+    # calendar id)
     calendar-id: "primary"
-    # Recurring-Events die NICHT als Meetings gelten (Reminder, persönliche Blocker).
-    # Comma-separated, da Spring's @Value YAML-Listen nicht zuverlässig zu List<String> bindet.
+    # Recurring events that do NOT count as meetings (reminders, personal blockers).
+    # Comma-separated because Spring's @Value does not reliably bind YAML lists to List<String>.
     skip-summaries: ""
   azure-devops:
     organization: ""
     project: ""
     pat: ""
   rules:
-    # Daily wird immer fix auf daily-fixed-minutes gebucht, unabhängig von Calendar-Dauer
+    # The daily is always booked at daily-fixed-minutes, regardless of calendar duration
     daily-event-summary: "Team Daily"
     daily-fixed-minutes: 15
-    # Andere Meetings: aufrunden auf nächste rounding-step-minutes Schritte
+    # Other meetings: rounded up to the next rounding-step-minutes
     rounding-step-minutes: 15

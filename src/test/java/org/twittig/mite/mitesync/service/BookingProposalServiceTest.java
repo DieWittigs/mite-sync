@@ -56,7 +56,7 @@ class BookingProposalServiceTest {
         assertThat(entry.getMinutes()).isEqualTo(60);
     }
 
-    // -------- Skip & Response-Status --------
+    // -------- Skip & response status --------
 
     @Test
     void skipped_event_is_excluded() {
@@ -96,14 +96,14 @@ class BookingProposalServiceTest {
 
     @Test
     void event_with_zero_rounded_minutes_is_excluded() {
-        CalendarEventModel zero = event("Kurznotiz", "accepted", false, 0, 0);
+        CalendarEventModel zero = event("Quick Note", "accepted", false, 0, 0);
 
         List<ProposalEntryModel> result = buildWith(List.of(zero), List.of(), List.of(), pbi(123, null));
 
-        assertThat(result).noneMatch(e -> e.getNote() != null && e.getNote().contains("Kurznotiz"));
+        assertThat(result).noneMatch(e -> e.getNote() != null && e.getNote().contains("Quick Note"));
     }
 
-    // -------- Duplikat-Check --------
+    // -------- Duplicate check --------
 
     @Test
     void already_booked_calendar_event_is_not_duplicated() {
@@ -118,7 +118,7 @@ class BookingProposalServiceTest {
     @Test
     void duplicate_check_is_case_insensitive() {
         CalendarEventModel event = event("Team Meeting", "accepted", false, 30, 30);
-        // Mite-Eintrag hat andere Groß-/Kleinschreibung
+        // Mite entry uses different casing
         MiteEntryModel booked = booked(1L, 30, "#595030 TEAM MEETING");
 
         List<ProposalEntryModel> result = buildWith(List.of(event), List.of(booked), List.of(), pbi(123, null));
@@ -130,14 +130,14 @@ class BookingProposalServiceTest {
     @Test
     void different_meeting_is_not_blocked_by_existing_entry() {
         CalendarEventModel event = event("Sprint Review", "accepted", false, 60, 60);
-        MiteEntryModel booked = booked(1L, 30, "#595030 Team Meeting"); // andere Notiz
+        MiteEntryModel booked = booked(1L, 30, "#595030 Team Meeting"); // different note
 
         List<ProposalEntryModel> result = buildWith(List.of(event), List.of(booked), List.of(), pbi(123, null));
 
         assertThat(result).anyMatch(e -> e.getNote() != null && e.getNote().contains("Sprint Review"));
     }
 
-    // -------- Dev-Fill / Restzeit --------
+    // -------- Dev fill / remaining time --------
 
     @Test
     void full_day_with_no_meetings_fills_main_pbi_with_default_target() {
@@ -146,7 +146,7 @@ class BookingProposalServiceTest {
         List<ProposalEntryModel> result = buildWith(List.of(), List.of(), List.of(workItem), pbi(1001, null));
 
         ProposalEntryModel devEntry = findDevFill(result);
-        assertThat(devEntry.getMinutes()).isEqualTo(375); // Standard 6,25 h
+        assertThat(devEntry.getMinutes()).isEqualTo(375); // default 6.25 h
         assertThat(devEntry.getNote()).isEqualTo("#1001 Feature XY");
         assertThat(devEntry.getPbiId()).isEqualTo(1001);
     }
@@ -203,8 +203,8 @@ class BookingProposalServiceTest {
 
     @Test
     void dev_fill_edge_case_14min_remaining_produces_zero_and_no_entry() {
-        // Meeting 361 min → remaining = 375 − 361 = 14 → roundDown(14) = 0 → kein Eintrag
-        CalendarEventModel meeting = event("Langer Workshop", "accepted", false, 361, 361);
+        // Meeting 361 min → remaining = 375 − 361 = 14 → roundDown(14) = 0 → no entry
+        CalendarEventModel meeting = event("Long Workshop", "accepted", false, 361, 361);
 
         List<ProposalEntryModel> result = buildWith(List.of(meeting), List.of(), List.of(), pbi(1001, null));
 
@@ -222,7 +222,7 @@ class BookingProposalServiceTest {
 
     @Test
     void target_hours_fractional_rounds_correctly() {
-        // 6.25 h = 375 min, aber als Override übergeben → gleich wie Default
+        // 6.25 h = 375 min — same as the default when explicitly overridden
         WorkItemModel workItem = workItem(1001, "Feature XY");
 
         List<ProposalEntryModel> result = buildWith(List.of(), List.of(), List.of(workItem), pbi(1001, 6.25));
@@ -235,7 +235,7 @@ class BookingProposalServiceTest {
         List<ProposalEntryModel> result = buildWith(List.of(), List.of(), List.of(), pbi(9999, null));
 
         ProposalEntryModel devEntry = findDevFill(result);
-        assertThat(devEntry.getNote()).isEqualTo("#9999 (Titel unbekannt)");
+        assertThat(devEntry.getNote()).isEqualTo("#9999 (unknown title)");
     }
 
     @Test
@@ -249,7 +249,7 @@ class BookingProposalServiceTest {
         assertThat(entry.getSource()).isEqualTo("calendar");
     }
 
-    // -------- Hilfsmethoden --------
+    // -------- Helpers --------
 
     private List<ProposalEntryModel> buildWith(
             List<CalendarEventModel> events,
@@ -263,14 +263,14 @@ class BookingProposalServiceTest {
         return result.stream()
                 .filter(e -> "main-pbi-fill".equals(e.getSource()))
                 .findFirst()
-                .orElseThrow(() -> new AssertionError("Kein main-pbi-fill Eintrag im Vorschlag"));
+                .orElseThrow(() -> new AssertionError("No main-pbi-fill entry in proposal"));
     }
 
     private ProposalEntryModel findByNoteContaining(List<ProposalEntryModel> result, String fragment) {
         return result.stream()
                 .filter(e -> e.getNote() != null && e.getNote().contains(fragment))
                 .findFirst()
-                .orElseThrow(() -> new AssertionError("Kein Eintrag mit Note-Fragment: " + fragment));
+                .orElseThrow(() -> new AssertionError("No entry with note fragment: " + fragment));
     }
 
     private CalendarEventModel event(String summary, String responseStatus, boolean skipped,

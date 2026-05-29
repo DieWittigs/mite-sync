@@ -1,15 +1,15 @@
 package org.twittig.mite.mitesync.web.model;
 
 /**
- * Ein einzelner vorgeschlagener Mite-Eintrag. Wird vom Proposal-Endpoint zurückgegeben und kann vom
- * Client editiert werden, bevor er an /book geschickt wird.
+ * A single proposed Mite entry. Returned by the proposal endpoint and may be edited by the
+ * client before it is sent to /book.
  */
 public class ProposalEntryModel {
 
   private int minutes;
   private String note;
   private String source; // "calendar" | "main-pbi-fill" | "additional-pbi-fill"
-  private Integer pbiId; // optional, zur Übersicht
+  private Integer pbiId; // optional, for the overview
   private String pbiTitle; // optional
 
   public ProposalEntryModel() {}

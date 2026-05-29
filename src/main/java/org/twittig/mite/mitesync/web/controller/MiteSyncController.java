@@ -66,7 +66,7 @@ public class MiteSyncController {
         SyncJobModel.Builder.builder()
             .withName(syncJobModel.getName())
             .withMessage(
-                "SyncJob von Source-Mite zu Target-Mite erfolgreich")
+                "Sync job from source Mite to target Mite completed successfully")
             .withSuccess(true)
             .withFrom(syncJobModel.getFrom())
             .withTo(syncJobModel.getTo())

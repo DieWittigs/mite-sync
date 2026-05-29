@@ -143,14 +143,14 @@ class GoogleCalendarServiceTest {
 
     List<CalendarEventModel> result = service.getEventsForDay(date, 15);
 
-    assertThat(result.get(0).getSummary()).isEqualTo("(kein Titel)");
+    assertThat(result.get(0).getSummary()).isEqualTo("(no title)");
   }
 
   @Test
   void getEventsForDay_skipSummaryMatch_marksSkipped() throws Exception {
     LocalDate date = LocalDate.of(2024, 3, 15);
-    ReflectionTestUtils.setField(service, "skipSummaries", List.of("Mite Buchungen", "Blocker"));
-    Event event = buildTimedEvent("Mite Buchungen",
+    ReflectionTestUtils.setField(service, "skipSummaries", List.of("Personal Time", "Blocker"));
+    Event event = buildTimedEvent("Personal Time",
         LocalDateTime.of(2024, 3, 15, 9, 0),
         LocalDateTime.of(2024, 3, 15, 9, 30));
 

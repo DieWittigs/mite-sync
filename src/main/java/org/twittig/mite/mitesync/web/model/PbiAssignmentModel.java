@@ -3,16 +3,15 @@ package org.twittig.mite.mitesync.web.model;
 import jakarta.validation.constraints.NotNull;
 
 /**
- * PBI-Zuordnung: definiert die Hauptarbeit-PBI für einen Tag und optional zusätzliche PBIs für die
- * Verteilung der Dev-Stunden. Wird im Request-Body von POST /daily-reports/{date}/preview
- * mitgegeben.
+ * PBI assignment: identifies the main work PBI for a day. Sent in the request body of
+ * POST /daily-reports/{date}/preview.
  */
 public class PbiAssignmentModel {
 
-  @NotNull(message = "mainPbiId darf nicht leer sein")
+  @NotNull(message = "mainPbiId must not be null")
   private Integer mainPbiId;
 
-  /** Ziel-Stunden für den Tag, in Stunden. Wenn null, default 6.25h (kann von Service überschrieben werden). */
+  /** Daily target in hours. When null, the service falls back to the default (6.25h). */
   private Double targetHours;
 
   public PbiAssignmentModel() {}

@@ -1,21 +1,21 @@
 services:
   mite-sync:
     image: ${DOCKERHUB_USERNAME}/mite-sync:latest
-    # build: .   # lokal bauen statt aus Docker Hub ziehen
+    # build: .   # build locally instead of pulling from Docker Hub
     ports:
       - "${APP_PORT:-8081}:8080"
-      - "8888:8888"   # nur beim ersten OAuth-Setup benötigt, danach entfernen
+      - "8888:8888"   # only needed for the first OAuth setup, remove afterwards
     volumes:
       - ${SECRETS_DIR:-~/.mite-sync}/google-client-secret.json:/secrets/google-client-secret.json:ro
       - ${SECRETS_DIR:-~/.mite-sync}/google-tokens:/secrets/google-tokens
     environment:
-      # Mite Source (Haupt-Instanz)
+      # Mite source (main instance)
       MITE_SYNC_SOURCE_HOST: ${MITE_SYNC_SOURCE_HOST}
       MITE_SYNC_SOURCE_API_KEY: ${MITE_SYNC_SOURCE_API_KEY}
       MITE_SYNC_SOURCE_PROJECT_ID: ${MITE_SYNC_SOURCE_PROJECT_ID}
       MITE_SYNC_SOURCE_SERVICE_ID: ${MITE_SYNC_SOURCE_SERVICE_ID}
       MITE_SYNC_SOURCE_MEETING_COLLECTOR_PBI: ${MITE_SYNC_SOURCE_MEETING_COLLECTOR_PBI}
-      # Mite Target (Mirror-Instanz)
+      # Mite target (mirror instance)
       MITE_SYNC_TARGET_HOST: ${MITE_SYNC_TARGET_HOST}
       MITE_SYNC_TARGET_API_KEY: ${MITE_SYNC_TARGET_API_KEY}
       MITE_SYNC_TARGET_PROJECT_ID: ${MITE_SYNC_TARGET_PROJECT_ID}
@@ -29,7 +29,7 @@ services:
       DAILY_REPORTS_AZURE_DEVOPS_ORGANIZATION: ${DAILY_REPORTS_AZURE_DEVOPS_ORGANIZATION}
       DAILY_REPORTS_AZURE_DEVOPS_PROJECT: ${DAILY_REPORTS_AZURE_DEVOPS_PROJECT}
       DAILY_REPORTS_AZURE_DEVOPS_PAT: ${DAILY_REPORTS_AZURE_DEVOPS_PAT}
-      # Booking Rules
+      # Booking rules
       DAILY_REPORTS_RULES_DAILY_EVENT_SUMMARY: ${DAILY_REPORTS_RULES_DAILY_EVENT_SUMMARY:-Team Daily}
       DAILY_REPORTS_RULES_DAILY_FIXED_MINUTES: ${DAILY_REPORTS_RULES_DAILY_FIXED_MINUTES:-15}
       DAILY_REPORTS_RULES_ROUNDING_STEP_MINUTES: ${DAILY_REPORTS_RULES_ROUNDING_STEP_MINUTES:-15}

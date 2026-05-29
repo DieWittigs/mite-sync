@@ -3,7 +3,7 @@ package org.twittig.mite.mitesync.web.model;
 import java.time.LocalDate;
 import java.util.List;
 
-/** Antwort von POST /daily-reports/{date}/book: was wurde erfolgreich gebucht und was nicht. */
+/** Response of POST /daily-reports/{date}/book: what was booked successfully and what failed. */
 public class BookingResultModel {
 
   private LocalDate date;

@@ -4,30 +4,30 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Antwort des POST /daily-reports/{date}/preview-Endpoints. Enthält alle Quelldaten und einen
- * Buchungsvorschlag, den der Client editieren kann bevor er an /book geschickt wird.
+ * Response of POST /daily-reports/{date}/preview. Contains all source data and a booking
+ * proposal that the client can edit before sending it to /book.
  */
 public class DailyReportModel {
 
   private LocalDate date;
   private String dayOfWeek;
 
-  /** Calendar-Events des Tages (gefilterte: alle die nicht skipped sind). */
+  /** Calendar events for the day (filtered: all that are not skipped). */
   private List<CalendarEventModel> calendarEvents;
 
-  /** Mite-Einträge die schon für diesen Tag gebucht sind. */
+  /** Mite entries already booked for the day. */
   private List<MiteEntryModel> alreadyBookedInMite;
 
-  /** Work Items, die der User am Stichtag bewegt hat. */
+  /** Work items the user changed on the date. */
   private List<WorkItemModel> devOpsActivityOnDate;
 
-  /** Aktuell offene Work Items, die dem User zugewiesen sind (für manuelle Auswahl). */
+  /** Currently open work items assigned to the user (for manual selection). */
   private List<WorkItemModel> openWorkItems;
 
-  /** Generierter Vorschlag: Liste an Einträgen, die gebucht werden würden. */
+  /** Generated proposal: the list of entries that would be booked. */
   private List<ProposalEntryModel> proposal;
 
-  /** Gesamtminuten der vorgeschlagenen Einträge. */
+  /** Total minutes across the proposed entries. */
   private int proposalTotalMinutes;
 
   public LocalDate getDate() {

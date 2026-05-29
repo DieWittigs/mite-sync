@@ -3,8 +3,8 @@ package org.twittig.mite.mitesync.web.model;
 import java.time.LocalTime;
 
 /**
- * Repräsentiert ein Calendar-Event auf einem bestimmten Tag, gefiltert auf für Mite relevante
- * Felder. Wird vom GET /daily-reports/{date}-Endpoint zurückgegeben.
+ * Calendar event for a given day, reduced to the fields relevant for Mite. Returned by the
+ * /daily-reports/{date} endpoint.
  */
 public class CalendarEventModel {
 
@@ -12,9 +12,9 @@ public class CalendarEventModel {
   private LocalTime startTime;
   private LocalTime endTime;
   private int minutes;
-  private int roundedMinutes; // nach Aufrundungs-Regel
+  private int roundedMinutes; // after the rounding rule
   private String responseStatus; // accepted | declined | needsAction | tentative
-  private boolean skipped; // true wenn in skip-summaries Liste
+  private boolean skipped; // true when summary is in the skip-summaries list
 
   public CalendarEventModel() {}
 

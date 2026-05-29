@@ -22,8 +22,8 @@ import org.springframework.stereotype.Service;
 import org.twittig.mite.mitesync.web.model.WorkItemModel;
 
 /**
- * Service zur Abfrage von Azure DevOps Work Items via REST API. Auth erfolgt mit Personal Access
- * Token (PAT) im Authorization-Header.
+ * Queries Azure DevOps work items through the REST API. Auth uses a Personal Access Token (PAT)
+ * in the Authorization header.
  */
 @Service
 public class AzureDevOpsService {
@@ -44,8 +44,8 @@ public class AzureDevOpsService {
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   /**
-   * Holt alle Work Items, die der aktuelle User (= Owner des PAT) am angegebenen Datum geändert
-   * oder erstellt hat.
+   * Returns all work items that the current user (= PAT owner) created or changed on the given
+   * date.
    */
   public List<WorkItemModel> getWorkItemsChangedByMeOnDate(LocalDate date) {
     String wiql =
@@ -58,7 +58,7 @@ public class AzureDevOpsService {
     return queryAndFetch(wiql, true, false);
   }
 
-  /** Holt alle Work Items, die aktuell dem User zugewiesen sind und nicht in einem Endzustand. */
+  /** Returns all work items currently assigned to the user that are not in a terminal state. */
   public List<WorkItemModel> getOpenWorkItemsAssignedToMe() {
     String wiql =
         "SELECT [System.Id] FROM WorkItems "
@@ -69,7 +69,7 @@ public class AzureDevOpsService {
     return queryAndFetch(wiql, false, true);
   }
 
-  /** Holt ein einzelnes Work Item anhand der ID (für Titel/Status-Lookup). */
+  /** Returns a single work item by id (for title/state lookups). */
   public WorkItemModel getWorkItemById(int id) {
     List<WorkItemModel> result = batchFetch(List.of(id));
     return result.isEmpty() ? null : result.get(0);
@@ -81,8 +81,8 @@ public class AzureDevOpsService {
 
   private List<WorkItemModel> queryAndFetch(String wiql, boolean markChangedByMe, boolean markAssignedToMe) {
     try {
-      // URLEncoder produziert form-encoding (Leerzeichen → "+"). Für URL-Pfade braucht
-      // Azure DevOps aber percent-encoding ("%20"). Daher Replacement.
+      // URLEncoder produces form-encoding (space → "+"). Azure DevOps URL paths need
+      // percent-encoding ("%20") instead, so we patch the output.
       String projectEnc = URLEncoder.encode(project, StandardCharsets.UTF_8).replace("+", "%20");
       URI uri = URI.create(
           "https://dev.azure.com/" + organization + "/" + projectEnc + "/_apis/wit/wiql?api-version=" + API_VERSION);
@@ -153,7 +153,7 @@ public class AzureDevOpsService {
         m.setChangedBy(f.path("System.ChangedBy").path("displayName").asText(null));
         String cd = f.path("System.ChangedDate").asText(null);
         if (cd != null && !cd.isEmpty()) {
-          // ISO-8601 mit Z, parsen ohne TZ ist robust für unsere Zwecke
+          // ISO-8601 with trailing Z — parsing without the offset is fine for our purposes
           m.setChangedDate(LocalDateTime.parse(cd.substring(0, 19), DateTimeFormatter.ISO_LOCAL_DATE_TIME));
         }
         result.add(m);
@@ -170,7 +170,7 @@ public class AzureDevOpsService {
     return "Basic " + Base64.getEncoder().encodeToString(creds.getBytes(StandardCharsets.UTF_8));
   }
 
-  // Utility wenn andernorts gebraucht
+  // Utility for callers that need a comma-separated id list
   static String joinIds(List<Integer> ids) {
     return ids.stream().map(String::valueOf).collect(Collectors.joining(","));
   }

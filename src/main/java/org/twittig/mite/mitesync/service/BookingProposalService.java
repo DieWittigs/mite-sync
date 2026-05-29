@@ -11,20 +11,20 @@ import org.twittig.mite.mitesync.web.model.ProposalEntryModel;
 import org.twittig.mite.mitesync.web.model.WorkItemModel;
 
 /**
- * Erzeugt aus Calendar-Events, DevOps-Aktivität, bereits gebuchten Mite-Einträgen und der
- * PBI-Zuordnung einen Tagesbuchungs-Vorschlag.
+ * Combines calendar events, DevOps activity, already-booked Mite entries and the PBI assignment
+ * into a daily booking proposal.
  *
- * <p>Regeln:
+ * <p>Rules:
  * <ul>
- *   <li>Daily-Event ist immer fix auf {@code daily-fixed-minutes} (default 15 min), unabhängig von
- *       Calendar-Dauer.
- *   <li>Andere Meetings: aufgerundet auf nächstes 15-Min-Vielfaches.
- *   <li>Skip-Summaries werden ausgelassen.
- *   <li>Nicht akzeptierte Events ("declined") werden ausgelassen; "needsAction" wird mit aufgenommen
- *       (User kann manuell entfernen).
- *   <li>Bereits in Mite gebuchte Calendar-Events werden NICHT erneut vorgeschlagen (anhand der
- *       Notiz-Übereinstimmung).
- *   <li>Dev-Stunden = (Ziel-Minuten − Calendar-Minuten), zugewiesen an die Haupt-PBI.
+ *   <li>The daily event is always booked at {@code daily-fixed-minutes} (default 15 min),
+ *       regardless of calendar duration.
+ *   <li>Other meetings are rounded up to the next 15-minute step.
+ *   <li>Skip-summaries are excluded.
+ *   <li>Declined events are excluded; {@code needsAction} events are included (the user can
+ *       remove them manually).
+ *   <li>Calendar events that are already booked in Mite are not proposed again (matched by
+ *       note).
+ *   <li>Dev minutes = target minutes − calendar minutes, assigned to the main PBI.
  * </ul>
  */
 @Service
@@ -40,9 +40,9 @@ public class BookingProposalService {
   private String meetingCollectorPbi;
 
   /**
-   * Default-Tagesziel in Minuten, wenn vom Client nicht im Body übersteuert.
+   * Default daily target in minutes when the client does not override it in the request body.
    *
-   * <p>6,25 h = 375 Min entspricht ca. 125h/20 Werktage.
+   * <p>6.25 h = 375 min, roughly 125 h / 20 working days.
    */
   private static final int DEFAULT_TARGET_MINUTES = 375;
 
@@ -60,7 +60,7 @@ public class BookingProposalService {
     List<ProposalEntryModel> proposal = new ArrayList<>();
     int meetingMinutes = 0;
 
-    // Already-booked notes (lowercase, getrimmt) für Duplikat-Check
+    // Already-booked notes (lowercased, trimmed) for the duplicate check
     var alreadyNotes =
         alreadyBooked.stream()
             .map(MiteEntryModel::getNote)
@@ -82,24 +82,24 @@ public class BookingProposalService {
       if (minutes <= 0) continue;
 
       String note = "#" + meetingCollectorPbi + " " + summary;
-      // Skip wenn schon gebucht (gleiche Note)
+      // Skip when an entry with the same note is already booked
       if (alreadyNotes.contains(note.trim().toLowerCase())) continue;
 
       proposal.add(new ProposalEntryModel(minutes, note, "calendar", null, null));
       meetingMinutes += minutes;
     }
 
-    // Bereits gebuchte Minuten zählen mit fürs Tagesziel
+    // Already-booked minutes count toward the daily target
     int alreadyMinutes = alreadyBooked.stream().mapToInt(MiteEntryModel::getMinutes).sum();
 
-    // Dev-Anteil: rest auf Tagesziel füllen, auf 15 Min runden
+    // Dev share: fill the rest up to the daily target, rounded down to 15 minutes
     int remaining = targetMinutes - meetingMinutes - alreadyMinutes;
     remaining = Math.max(0, roundDownTo15(remaining));
 
     if (remaining > 0) {
       WorkItemModel mainPbi = findById(openWorkItems, pbiAssignment.getMainPbiId());
       String pbiTitle =
-          mainPbi != null && mainPbi.getTitle() != null ? mainPbi.getTitle() : "(Titel unbekannt)";
+          mainPbi != null && mainPbi.getTitle() != null ? mainPbi.getTitle() : "(unknown title)";
       String note = "#" + pbiAssignment.getMainPbiId() + " " + pbiTitle;
       proposal.add(
           new ProposalEntryModel(

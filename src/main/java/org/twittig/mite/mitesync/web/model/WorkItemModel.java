@@ -3,8 +3,8 @@ package org.twittig.mite.mitesync.web.model;
 import java.time.LocalDateTime;
 
 /**
- * Repräsentiert ein Azure DevOps Work Item, das relevant für die Tagesbuchung ist (entweder
- * geändert vom User am betreffenden Tag, oder offen und ihm zugewiesen).
+ * Azure DevOps work item relevant for the daily booking (either changed by the user on the
+ * given day, or open and currently assigned to them).
  */
 public class WorkItemModel {
 
@@ -15,8 +15,8 @@ public class WorkItemModel {
   private String assignedTo;
   private String changedBy;
   private LocalDateTime changedDate;
-  private boolean changedByMe; // wurde am Stichtag von Thomas geändert
-  private boolean assignedToMe; // ist aktuell ihm zugewiesen
+  private boolean changedByMe; // changed by the current user on the date
+  private boolean assignedToMe; // currently assigned to the current user
 
   public WorkItemModel() {}
 

@@ -15,7 +15,7 @@ import java.lang.annotation.Target;
  * 'to' date within the annotated class. The actual validation logic is implemented in the {@code
  * DateRangeValidator} class.
  *
- * <p>The default validation message is "Datum 'from' muss vor 'to' liegen".
+ * <p>The default validation message is "'from' date must be on or before 'to' date".
  *
  * <p>Attributes: - message: Customizable validation error message. - groups: Allows specification
  * of validation groups, to which this constraint belongs. - payload: Can be used to attach custom
@@ -26,7 +26,7 @@ import java.lang.annotation.Target;
 @Target({ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ValidDateRange {
-  String message() default "Datum 'from' muss vor 'to' liegen";
+  String message() default "'from' date must be on or before 'to' date";
 
   Class<?>[] groups() default {};
 
