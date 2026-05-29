@@ -1,0 +1,64 @@
+package org.twittig.mite.mitesync.web.model;
+
+/**
+ * Ein einzelner vorgeschlagener Mite-Eintrag. Wird vom Proposal-Endpoint zurückgegeben und kann vom
+ * Client editiert werden, bevor er an /book geschickt wird.
+ */
+public class ProposalEntryModel {
+
+  private int minutes;
+  private String note;
+  private String source; // "calendar" | "main-pbi-fill" | "additional-pbi-fill"
+  private Integer pbiId; // optional, zur Übersicht
+  private String pbiTitle; // optional
+
+  public ProposalEntryModel() {}
+
+  public ProposalEntryModel(int minutes, String note, String source, Integer pbiId, String pbiTitle) {
+    this.minutes = minutes;
+    this.note = note;
+    this.source = source;
+    this.pbiId = pbiId;
+    this.pbiTitle = pbiTitle;
+  }
+
+  public int getMinutes() {
+    return minutes;
+  }
+
+  public void setMinutes(int minutes) {
+    this.minutes = minutes;
+  }
+
+  public String getNote() {
+    return note;
+  }
+
+  public void setNote(String note) {
+    this.note = note;
+  }
+
+  public String getSource() {
+    return source;
+  }
+
+  public void setSource(String source) {
+    this.source = source;
+  }
+
+  public Integer getPbiId() {
+    return pbiId;
+  }
+
+  public void setPbiId(Integer pbiId) {
+    this.pbiId = pbiId;
+  }
+
+  public String getPbiTitle() {
+    return pbiTitle;
+  }
+
+  public void setPbiTitle(String pbiTitle) {
+    this.pbiTitle = pbiTitle;
+  }
+}

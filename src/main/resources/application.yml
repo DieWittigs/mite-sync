@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: "mite-sync"
+
+logging:
+  level:
+    io:
+    seventytwo:
+      oss:
+        logging:
+          mite: "DEBUG"
+
+# Alle Werte werden typischerweise via Umgebungsvariablen gesetzt
+# (siehe .env.example und docker-compose.yml).
+mite-sync:
+  source:
+    host: ""
+    api-key: ""
+    project-id: ""
+    service-id: ""
+    # Sammel-PBI für Meeting-Notizen (alle Kalender-Events landen unter dieser Nummer)
+    meeting-collector-pbi: ""
+  target:
+    host: ""
+    api-key: ""
+    project-id: ""
+    service-id: ""
+
+# Daily-Reports: Calendar + DevOps + Booking-Logik
+daily-reports:
+  google-calendar:
+    # Google Cloud Project mit aktivierter Calendar API. Setup-Anleitung in HELP.md.
+    # Pfad zur OAuth2 client_secret.json (lokal heruntergeladen von Google Cloud Console)
+    client-secret-file: "${user.home}/.mite-sync/google-client-secret.json"
+    # Verzeichnis für persistente Tokens (refresh token wird hier abgelegt nach erstem Login)
+    tokens-directory: "${user.home}/.mite-sync/google-tokens"
+    # Welcher Kalender gelesen wird ("primary" für den Haupt-Kalender des Accounts,
+    # alternativ eine spezifische Kalender-ID)
+    calendar-id: "primary"
+    # Recurring-Events die NICHT als Meetings gelten (Reminder, persönliche Blocker).
+    # Comma-separated, da Spring's @Value YAML-Listen nicht zuverlässig zu List<String> bindet.
+    skip-summaries: ""
+  azure-devops:
+    organization: ""
+    project: ""
+    pat: ""
+  rules:
+    # Daily wird immer fix auf daily-fixed-minutes gebucht, unabhängig von Calendar-Dauer
+    daily-event-summary: "Team Daily"
+    daily-fixed-minutes: 15
+    # Andere Meetings: aufrunden auf nächste rounding-step-minutes Schritte
+    rounding-step-minutes: 15
