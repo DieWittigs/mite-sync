@@ -153,6 +153,15 @@ public class DailyReportProperties {
     /** Ticket id that commits without a recognizable ticket are booked under. Blank = no id. */
     private String fallbackTicket = "";
 
+    /**
+     * When set, the gap between the estimated entries and the daily target is filled with one
+     * entry on this ticket. Blank (default) = book only what the history shows.
+     */
+    private String fillUpTicket = "";
+
+    /** Note text of the fill-up entry (prefixed with {@code #<fill-up-ticket>}). */
+    private String fillUpNote = "Development";
+
     public List<String> getRepositories() {
       return repositories;
     }
@@ -199,6 +208,22 @@ public class DailyReportProperties {
 
     public void setFallbackTicket(String fallbackTicket) {
       this.fallbackTicket = fallbackTicket;
+    }
+
+    public String getFillUpTicket() {
+      return fillUpTicket;
+    }
+
+    public void setFillUpTicket(String fillUpTicket) {
+      this.fillUpTicket = fillUpTicket;
+    }
+
+    public String getFillUpNote() {
+      return fillUpNote;
+    }
+
+    public void setFillUpNote(String fillUpNote) {
+      this.fillUpNote = fillUpNote;
     }
   }
 

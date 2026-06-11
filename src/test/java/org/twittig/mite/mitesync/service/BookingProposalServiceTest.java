@@ -253,6 +253,101 @@ class BookingProposalServiceTest {
         assertThat(entry.getSource()).isEqualTo("calendar");
     }
 
+    // -------- buildGitProposal (git-activity workflow) --------
+
+    @Test
+    void gitProposal_passesEstimatedEntriesThrough() {
+        ProposalEntryModel estimated = gitEntry(60, "#VC-1 Fix the thing");
+
+        List<ProposalEntryModel> result =
+                service.buildGitProposal(profile, List.of(estimated), List.of(), null);
+
+        assertThat(result).containsExactly(estimated);
+    }
+
+    @Test
+    void gitProposal_alreadyBookedEntry_isDroppedCaseInsensitive() {
+        ProposalEntryModel estimated = gitEntry(60, "#VC-1 Fix the thing");
+        MiteEntryModel alreadyBooked = booked(1L, 60, "  #vc-1 FIX THE THING ");
+
+        List<ProposalEntryModel> result =
+                service.buildGitProposal(profile, List.of(estimated), List.of(alreadyBooked), null);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void gitProposal_noFillUpByDefault() {
+        ProposalEntryModel estimated = gitEntry(60, "#VC-1 Fix the thing");
+
+        List<ProposalEntryModel> result =
+                service.buildGitProposal(profile, List.of(estimated), List.of(), null);
+
+        assertThat(result).noneMatch(e -> "git-fill".equals(e.getSource()));
+    }
+
+    @Test
+    void gitProposal_fillUpTicketConfigured_fillsToTarget() {
+        profile.getGit().setFillUpTicket("VC-99");
+        // target 375 − estimated 60 − booked 120 = 195 → rounded down to 195 (already step-aligned)
+        ProposalEntryModel estimated = gitEntry(60, "#VC-1 Fix the thing");
+        MiteEntryModel alreadyBooked = booked(1L, 120, "#VC-2 Other");
+
+        List<ProposalEntryModel> result =
+                service.buildGitProposal(profile, List.of(estimated), List.of(alreadyBooked), null);
+
+        ProposalEntryModel fill = result.stream()
+                .filter(e -> "git-fill".equals(e.getSource()))
+                .findFirst().orElseThrow();
+        assertThat(fill.getMinutes()).isEqualTo(195);
+        assertThat(fill.getNote()).isEqualTo("#VC-99 Development");
+    }
+
+    @Test
+    void gitProposal_fillUp_respectsTargetHoursOverride() {
+        profile.getGit().setFillUpTicket("VC-99");
+        ProposalEntryModel estimated = gitEntry(60, "#VC-1 Fix the thing");
+
+        List<ProposalEntryModel> result =
+                service.buildGitProposal(profile, List.of(estimated), List.of(), 2.0);
+
+        ProposalEntryModel fill = result.stream()
+                .filter(e -> "git-fill".equals(e.getSource()))
+                .findFirst().orElseThrow();
+        assertThat(fill.getMinutes()).isEqualTo(60); // 120 − 60
+    }
+
+    @Test
+    void gitProposal_fillUp_remainingIsRoundedDownToStep() {
+        profile.getGit().setFillUpTicket("VC-99");
+        // target 375 − estimated 70 = 305 → rounded down to 300
+        ProposalEntryModel estimated = gitEntry(70, "#VC-1 Fix the thing");
+
+        List<ProposalEntryModel> result =
+                service.buildGitProposal(profile, List.of(estimated), List.of(), null);
+
+        ProposalEntryModel fill = result.stream()
+                .filter(e -> "git-fill".equals(e.getSource()))
+                .findFirst().orElseThrow();
+        assertThat(fill.getMinutes()).isEqualTo(300);
+    }
+
+    @Test
+    void gitProposal_fillUp_noEntryWhenTargetAlreadyReached() {
+        profile.getGit().setFillUpTicket("VC-99");
+        ProposalEntryModel estimated = gitEntry(60, "#VC-1 Fix the thing");
+        MiteEntryModel alreadyBooked = booked(1L, 375, "#VC-2 Other");
+
+        List<ProposalEntryModel> result =
+                service.buildGitProposal(profile, List.of(estimated), List.of(alreadyBooked), null);
+
+        assertThat(result).noneMatch(e -> "git-fill".equals(e.getSource()));
+    }
+
+    private ProposalEntryModel gitEntry(int minutes, String note) {
+        return new ProposalEntryModel(minutes, note, "git", null, null);
+    }
+
     // -------- Helpers --------
 
     private List<ProposalEntryModel> buildWith(

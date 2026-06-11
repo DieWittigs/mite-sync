@@ -24,6 +24,9 @@ public class DailyReportModel {
   /** Currently open work items assigned to the user (for manual selection). */
   private List<WorkItemModel> openWorkItems;
 
+  /** Commits backing the proposal — only filled for git-activity profiles. */
+  private List<GitCommitModel> gitCommits;
+
   /** Generated proposal: the list of entries that would be booked. */
   private List<ProposalEntryModel> proposal;
 
@@ -76,6 +79,14 @@ public class DailyReportModel {
 
   public void setOpenWorkItems(List<WorkItemModel> openWorkItems) {
     this.openWorkItems = openWorkItems;
+  }
+
+  public List<GitCommitModel> getGitCommits() {
+    return gitCommits;
+  }
+
+  public void setGitCommits(List<GitCommitModel> gitCommits) {
+    this.gitCommits = gitCommits;
   }
 
   public List<ProposalEntryModel> getProposal() {

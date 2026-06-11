@@ -83,6 +83,8 @@ class DailyReportPropertiesTest {
               assertThat(git.getSessionGapMinutes()).isEqualTo(90);
               assertThat(git.getLeadInMinutes()).isEqualTo(30);
               assertThat(git.getFallbackTicket()).isEmpty();
+              assertThat(git.getFillUpTicket()).isEmpty();
+              assertThat(git.getFillUpNote()).isEqualTo("Development");
             });
   }
 

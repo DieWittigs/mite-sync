@@ -40,6 +40,14 @@ The duration heuristic:
    `#<ticket> <subject of the ticket's latest commit>`.
 
 The result is an estimate to be reviewed in the preview — not a time-tracking measurement.
+The preview response lists the day's commits (`gitCommits`) as the evidence behind the
+estimate, and the duplicate guard drops entries whose note is already booked in Mite, so
+re-running preview after book proposes nothing new.
+
+Request-body notes for git-activity profiles: `mainPbiId` is not used (it is only required for
+calendar-devops profiles); `targetHours` only matters when `git.fill-up-ticket` is configured —
+then the gap between the daily target and (booked + estimated) minutes is added as one entry on
+that ticket. By default only what the history shows is proposed.
 
 ## Google Cloud OAuth2 setup
 

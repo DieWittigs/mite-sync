@@ -3,6 +3,7 @@ package org.twittig.mite.mitesync.service;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Service;
+import org.twittig.mite.mitesync.config.DailyReportProperties.GitActivity;
 import org.twittig.mite.mitesync.config.DailyReportProperties.Profile;
 import org.twittig.mite.mitesync.config.DailyReportProperties.Rules;
 import org.twittig.mite.mitesync.web.model.CalendarEventModel;
@@ -47,13 +48,7 @@ public class BookingProposalService {
     List<ProposalEntryModel> proposal = new ArrayList<>();
     int meetingMinutes = 0;
 
-    // Already-booked notes (lowercased, trimmed) for the duplicate check
-    var alreadyNotes =
-        alreadyBooked.stream()
-            .map(MiteEntryModel::getNote)
-            .filter(java.util.Objects::nonNull)
-            .map(s -> s.trim().toLowerCase())
-            .toList();
+    List<String> alreadyNotes = normalizedNotes(alreadyBooked);
 
     for (CalendarEventModel ev : calendarEvents) {
       if (ev.isSkipped()) continue;
@@ -95,6 +90,61 @@ public class BookingProposalService {
     }
 
     return proposal;
+  }
+
+  /**
+   * Builds the proposal of a git-activity profile from the estimated per-ticket entries.
+   *
+   * <ul>
+   *   <li>Duplicate guard: estimated entries whose note is already booked in Mite are dropped
+   *       (case-insensitive, trimmed) — re-running preview after book proposes nothing new.
+   *   <li>Fill-up is opt-in: only when {@code git.fill-up-ticket} is configured, the gap between
+   *       the day's target and (already booked + estimated) minutes is added as one entry on that
+   *       ticket, rounded down to the rounding step. Default is to book only what the history
+   *       shows.
+   * </ul>
+   */
+  public List<ProposalEntryModel> buildGitProposal(
+      Profile profile,
+      List<ProposalEntryModel> estimatedEntries,
+      List<MiteEntryModel> alreadyBooked,
+      Double targetHoursOverride) {
+
+    List<String> alreadyNotes = normalizedNotes(alreadyBooked);
+    List<ProposalEntryModel> proposal = new ArrayList<>();
+    for (ProposalEntryModel e : estimatedEntries) {
+      if (e.getNote() != null && alreadyNotes.contains(e.getNote().trim().toLowerCase())) {
+        continue;
+      }
+      proposal.add(e);
+    }
+
+    GitActivity git = profile.getGit();
+    if (git.getFillUpTicket() != null && !git.getFillUpTicket().isBlank()) {
+      Rules rules = profile.getRules();
+      int targetMinutes =
+          targetHoursOverride == null
+              ? rules.getTargetMinutes()
+              : (int) Math.round(targetHoursOverride * 60);
+      int alreadyMinutes = alreadyBooked.stream().mapToInt(MiteEntryModel::getMinutes).sum();
+      int proposedMinutes = proposal.stream().mapToInt(ProposalEntryModel::getMinutes).sum();
+
+      int remaining = targetMinutes - alreadyMinutes - proposedMinutes;
+      remaining = Math.max(0, roundDownToStep(remaining, rules.getRoundingStepMinutes()));
+      if (remaining > 0) {
+        String note = "#" + git.getFillUpTicket() + " " + git.getFillUpNote();
+        proposal.add(new ProposalEntryModel(remaining, note, "git-fill", null, null));
+      }
+    }
+    return proposal;
+  }
+
+  private static List<String> normalizedNotes(List<MiteEntryModel> alreadyBooked) {
+    return alreadyBooked.stream()
+        .map(MiteEntryModel::getNote)
+        .filter(java.util.Objects::nonNull)
+        .map(s -> s.trim().toLowerCase())
+        .toList();
   }
 
   private WorkItemModel findById(List<WorkItemModel> items, Integer id) {
