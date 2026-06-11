@@ -23,6 +23,24 @@ The legacy routes without a project segment (`/daily-reports/{date}/preview`) us
 named by `daily-reports.default-profile`. Unknown project keys return 404; profiles whose
 workflow type is not implemented yet return 501.
 
+### Git activity estimation
+
+For `git-activity` profiles the proposal is derived from the commit history of locally
+checked-out repositories (`git.repositories`, all branches, optional `git.author` filter).
+The duration heuristic:
+
+1. The day's commits are sorted and grouped into **sessions** — a gap larger than
+   `session-gap-minutes` (default 90) starts a new session.
+2. A session lasts from its first to its last commit plus `lead-in-minutes` (default 30) for
+   the work before the first commit; a single-commit session counts `lead-in-minutes`.
+3. The session duration is split across tickets proportionally to their commit counts. The
+   ticket id comes from `ticket-pattern` (default `^([A-Z]+-\d+)`) matched against the commit
+   subject; unmatched commits fall into the `fallback-ticket` bucket.
+4. Per-ticket totals are rounded **up** to the profile's rounding step; the proposal note is
+   `#<ticket> <subject of the ticket's latest commit>`.
+
+The result is an estimate to be reviewed in the preview — not a time-tracking measurement.
+
 ## Google Cloud OAuth2 setup
 
 1. **Create a Google Cloud project** (or reuse an existing one):

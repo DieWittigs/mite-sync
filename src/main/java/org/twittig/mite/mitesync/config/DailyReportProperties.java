@@ -1,6 +1,8 @@
 package org.twittig.mite.mitesync.config;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -64,6 +66,9 @@ public class DailyReportProperties {
 
     private Rules rules = new Rules();
 
+    /** Git activity source settings — only relevant for {@link WorkflowType#GIT_ACTIVITY}. */
+    private GitActivity git = new GitActivity();
+
     public WorkflowType getWorkflowType() {
       return workflowType;
     }
@@ -110,6 +115,90 @@ public class DailyReportProperties {
 
     public void setRules(Rules rules) {
       this.rules = rules;
+    }
+
+    public GitActivity getGit() {
+      return git;
+    }
+
+    public void setGit(GitActivity git) {
+      this.git = git;
+    }
+  }
+
+  /** Settings of the git activity source: which repositories to read and how to interpret them. */
+  public static class GitActivity {
+
+    /** Absolute paths of the local working copies whose history contributes to the proposal. */
+    private List<String> repositories = new ArrayList<>();
+
+    /**
+     * Author filter: only commits whose author name or email contains this string
+     * (case-insensitive) are counted. Blank = all commits.
+     */
+    private String author = "";
+
+    /** Regex whose first group extracts the ticket id from the start of a commit message. */
+    private String ticketPattern = "^([A-Z]+-\\d+)";
+
+    /** Gaps between consecutive commits larger than this split the day into work sessions. */
+    private int sessionGapMinutes = 90;
+
+    /**
+     * Minutes added to each session for the work leading up to its first commit. Also gives
+     * single-commit sessions a non-zero duration.
+     */
+    private int leadInMinutes = 30;
+
+    /** Ticket id that commits without a recognizable ticket are booked under. Blank = no id. */
+    private String fallbackTicket = "";
+
+    public List<String> getRepositories() {
+      return repositories;
+    }
+
+    public void setRepositories(List<String> repositories) {
+      this.repositories = repositories;
+    }
+
+    public String getAuthor() {
+      return author;
+    }
+
+    public void setAuthor(String author) {
+      this.author = author;
+    }
+
+    public String getTicketPattern() {
+      return ticketPattern;
+    }
+
+    public void setTicketPattern(String ticketPattern) {
+      this.ticketPattern = ticketPattern;
+    }
+
+    public int getSessionGapMinutes() {
+      return sessionGapMinutes;
+    }
+
+    public void setSessionGapMinutes(int sessionGapMinutes) {
+      this.sessionGapMinutes = sessionGapMinutes;
+    }
+
+    public int getLeadInMinutes() {
+      return leadInMinutes;
+    }
+
+    public void setLeadInMinutes(int leadInMinutes) {
+      this.leadInMinutes = leadInMinutes;
+    }
+
+    public String getFallbackTicket() {
+      return fallbackTicket;
+    }
+
+    public void setFallbackTicket(String fallbackTicket) {
+      this.fallbackTicket = fallbackTicket;
     }
   }
 

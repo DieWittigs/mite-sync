@@ -64,6 +64,28 @@ class DailyReportPropertiesTest {
             });
   }
 
+  @Test
+  void gitActivitySettingsBindWithDefaults() {
+    runner
+        .withPropertyValues(
+            "daily-reports.profiles.alpha.git.repositories[0]=/path/to/repo-a",
+            "daily-reports.profiles.alpha.git.repositories[1]=/path/to/repo-b",
+            "daily-reports.profiles.alpha.git.author=thomas")
+        .run(
+            context -> {
+              var git = context.getBean(DailyReportProperties.class)
+                  .getProfiles().get("alpha").getGit();
+              assertThat(git.getRepositories())
+                  .containsExactly("/path/to/repo-a", "/path/to/repo-b");
+              assertThat(git.getAuthor()).isEqualTo("thomas");
+              // defaults
+              assertThat(git.getTicketPattern()).isEqualTo("^([A-Z]+-\\d+)");
+              assertThat(git.getSessionGapMinutes()).isEqualTo(90);
+              assertThat(git.getLeadInMinutes()).isEqualTo(30);
+              assertThat(git.getFallbackTicket()).isEmpty();
+            });
+  }
+
   @Configuration
   @EnableConfigurationProperties(DailyReportProperties.class)
   static class TestConfig {}
