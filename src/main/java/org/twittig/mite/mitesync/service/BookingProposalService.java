@@ -2,8 +2,9 @@ package org.twittig.mite.mitesync.service;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.twittig.mite.mitesync.config.DailyReportProperties.Profile;
+import org.twittig.mite.mitesync.config.DailyReportProperties.Rules;
 import org.twittig.mite.mitesync.web.model.CalendarEventModel;
 import org.twittig.mite.mitesync.web.model.MiteEntryModel;
 import org.twittig.mite.mitesync.web.model.PbiAssignmentModel;
@@ -12,7 +13,7 @@ import org.twittig.mite.mitesync.web.model.WorkItemModel;
 
 /**
  * Combines calendar events, DevOps activity, already-booked Mite entries and the PBI assignment
- * into a daily booking proposal.
+ * into a daily booking proposal. All rule values come from the project profile.
  *
  * <p>Rules:
  * <ul>
@@ -30,31 +31,17 @@ import org.twittig.mite.mitesync.web.model.WorkItemModel;
 @Service
 public class BookingProposalService {
 
-  @Value("${daily-reports.rules.daily-event-summary}")
-  private String dailySummary;
-
-  @Value("${daily-reports.rules.daily-fixed-minutes}")
-  private int dailyFixedMinutes;
-
-  @Value("${mite-sync.source.meeting-collector-pbi}")
-  private String meetingCollectorPbi;
-
-  /**
-   * Default daily target in minutes when the client does not override it in the request body.
-   *
-   * <p>6.25 h = 375 min, roughly 125 h / 20 working days.
-   */
-  private static final int DEFAULT_TARGET_MINUTES = 375;
-
   public List<ProposalEntryModel> buildProposal(
+      Profile profile,
       List<CalendarEventModel> calendarEvents,
       List<MiteEntryModel> alreadyBooked,
       List<WorkItemModel> openWorkItems,
       PbiAssignmentModel pbiAssignment) {
 
+    Rules rules = profile.getRules();
     int targetMinutes =
         pbiAssignment.getTargetHours() == null
-            ? DEFAULT_TARGET_MINUTES
+            ? rules.getTargetMinutes()
             : (int) Math.round(pbiAssignment.getTargetHours() * 60);
 
     List<ProposalEntryModel> proposal = new ArrayList<>();
@@ -74,14 +61,15 @@ public class BookingProposalService {
 
       int minutes;
       String summary = ev.getSummary();
-      if (dailySummary != null && dailySummary.equalsIgnoreCase(summary)) {
-        minutes = dailyFixedMinutes;
+      if (rules.getDailyEventSummary() != null
+          && rules.getDailyEventSummary().equalsIgnoreCase(summary)) {
+        minutes = rules.getDailyFixedMinutes();
       } else {
         minutes = ev.getRoundedMinutes();
       }
       if (minutes <= 0) continue;
 
-      String note = "#" + meetingCollectorPbi + " " + summary;
+      String note = "#" + profile.getMeetingCollectorPbi() + " " + summary;
       // Skip when an entry with the same note is already booked
       if (alreadyNotes.contains(note.trim().toLowerCase())) continue;
 
@@ -92,9 +80,9 @@ public class BookingProposalService {
     // Already-booked minutes count toward the daily target
     int alreadyMinutes = alreadyBooked.stream().mapToInt(MiteEntryModel::getMinutes).sum();
 
-    // Dev share: fill the rest up to the daily target, rounded down to 15 minutes
+    // Dev share: fill the rest up to the daily target, rounded down to the rounding step
     int remaining = targetMinutes - meetingMinutes - alreadyMinutes;
-    remaining = Math.max(0, roundDownTo15(remaining));
+    remaining = Math.max(0, roundDownToStep(remaining, rules.getRoundingStepMinutes()));
 
     if (remaining > 0) {
       WorkItemModel mainPbi = findById(openWorkItems, pbiAssignment.getMainPbiId());
@@ -117,7 +105,7 @@ public class BookingProposalService {
     return null;
   }
 
-  private static int roundDownTo15(int minutes) {
-    return (minutes / 15) * 15;
+  private static int roundDownToStep(int minutes, int step) {
+    return (minutes / step) * step;
   }
 }

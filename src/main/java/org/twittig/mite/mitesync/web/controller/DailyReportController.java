@@ -26,6 +26,9 @@ import org.twittig.mite.mitesync.web.model.PbiAssignmentModel;
  *   <li>The client optionally edits individual entries (minutes, notes).
  *   <li>The client posts the final entries to /book — Mite entries are created.
  * </ol>
+ *
+ * <p>The project path segment selects the configured profile (workflow type, Mite instance,
+ * rules). The legacy routes without a project use the default profile.
  */
 @RestController
 @RequestMapping("/daily-reports")
@@ -41,11 +44,27 @@ public class DailyReportController {
   }
 
   /**
-   * Builds a daily report including the booking proposal. The date is supplied as an ISO path
-   * variable (YYYY-MM-DD); the PBI assignment is in the request body.
+   * Builds a daily report including the booking proposal for the given project profile. The date
+   * is supplied as an ISO path variable (YYYY-MM-DD); the PBI assignment is in the request body.
    */
-  @PostMapping("/{date}/preview")
+  @PostMapping("/{project}/{date}/preview")
   public ResponseEntity<DailyReportModel> preview(
+      @PathVariable("project") String project,
+      @PathVariable("date") String dateStr,
+      @RequestBody @Valid PbiAssignmentModel pbiAssignment) {
+    LocalDate date = LocalDate.parse(dateStr, ISO);
+    log.info(
+        "Daily-report preview requested for {} (project={}, mainPbi={})",
+        date,
+        project,
+        pbiAssignment.getMainPbiId());
+    DailyReportModel report = facade.preview(project, date, pbiAssignment);
+    return ResponseEntity.ok(report);
+  }
+
+  /** Legacy route without a project segment — uses the default profile. */
+  @PostMapping("/{date}/preview")
+  public ResponseEntity<DailyReportModel> previewDefault(
       @PathVariable("date") String dateStr, @RequestBody @Valid PbiAssignmentModel pbiAssignment) {
     LocalDate date = LocalDate.parse(dateStr, ISO);
     log.info("Daily-report preview requested for {} (mainPbi={})", date, pbiAssignment.getMainPbiId());
@@ -54,19 +73,41 @@ public class DailyReportController {
   }
 
   /**
-   * Books the entries from the request body for the given date. Entries typically come from the
-   * /preview endpoint and may have been edited manually by the user.
+   * Books the entries from the request body for the given date into the profile's Mite instance.
+   * Entries typically come from the /preview endpoint and may have been edited manually by the
+   * user.
    */
-  @PostMapping("/{date}/book")
+  @PostMapping("/{project}/{date}/book")
   public ResponseEntity<BookingResultModel> book(
+      @PathVariable("project") String project,
+      @PathVariable("date") String dateStr,
+      @RequestBody @Valid BookingRequestModel request) {
+    LocalDate date = LocalDate.parse(dateStr, ISO);
+    log.info(
+        "Daily-report book requested for {} (project={}, {} entries)",
+        date,
+        project,
+        request.getEntries().size());
+    BookingResultModel result = facade.book(project, date, request.getEntries());
+    logBookingResult(result);
+    return ResponseEntity.ok(result);
+  }
+
+  /** Legacy route without a project segment — uses the default profile. */
+  @PostMapping("/{date}/book")
+  public ResponseEntity<BookingResultModel> bookDefault(
       @PathVariable("date") String dateStr, @RequestBody @Valid BookingRequestModel request) {
     LocalDate date = LocalDate.parse(dateStr, ISO);
     log.info("Daily-report book requested for {} ({} entries)", date, request.getEntries().size());
     BookingResultModel result = facade.book(date, request.getEntries());
+    logBookingResult(result);
+    return ResponseEntity.ok(result);
+  }
+
+  private void logBookingResult(BookingResultModel result) {
     log.info(
         "Daily-report booking done: {} created, {} failed",
         result.getCreated().size(),
         result.getFailed().size());
-    return ResponseEntity.ok(result);
   }
 }

@@ -2,8 +2,8 @@ package org.twittig.mite.mitesync.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.seventytwo.oss.mite.MiteClient;
@@ -15,10 +15,10 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.twittig.mite.mitesync.config.DailyReportProperties.Profile;
+import org.twittig.mite.mitesync.config.MiteClientRegistry;
 import org.twittig.mite.mitesync.web.model.BookingResultModel;
 import org.twittig.mite.mitesync.web.model.MiteEntryModel;
 import org.twittig.mite.mitesync.web.model.ProposalEntryModel;
@@ -27,12 +27,23 @@ import org.twittig.mite.mitesync.web.model.ProposalEntryModel;
 class MiteBookingServiceTest {
 
   @Mock private MiteClient sourceMiteClient;
-  @InjectMocks private MiteBookingService service;
+  @Mock private MiteClient targetMiteClient;
+
+  private MiteBookingService service;
+  private Profile profile;
 
   @BeforeEach
   void setUp() {
-    ReflectionTestUtils.setField(service, "sourceProjectId", "11111");
-    ReflectionTestUtils.setField(service, "sourceServiceId", "22222");
+    service = new MiteBookingService(new MiteClientRegistry(sourceMiteClient, targetMiteClient));
+    profile = profile("source", "11111", "22222");
+  }
+
+  private static Profile profile(String miteInstance, String projectId, String serviceId) {
+    Profile p = new Profile();
+    p.setMiteInstance(miteInstance);
+    p.setProjectId(projectId);
+    p.setServiceId(serviceId);
+    return p;
   }
 
   @Test
@@ -44,7 +55,7 @@ class MiteBookingServiceTest {
 
     when(sourceMiteClient.getTimeEntries(any(TimeEntriesRequest.class))).thenReturn(response);
 
-    List<MiteEntryModel> result = service.getEntriesForDate(date);
+    List<MiteEntryModel> result = service.getEntriesForDate(profile, date);
 
     assertThat(result).hasSize(1);
     MiteEntryModel m = result.get(0);
@@ -64,7 +75,7 @@ class MiteBookingServiceTest {
 
     when(sourceMiteClient.getTimeEntries(any(TimeEntriesRequest.class))).thenReturn(response);
 
-    List<MiteEntryModel> result = service.getEntriesForDate(date);
+    List<MiteEntryModel> result = service.getEntriesForDate(profile, date);
 
     assertThat(result.get(0).getNote()).isNull();
   }
@@ -74,7 +85,19 @@ class MiteBookingServiceTest {
     LocalDate date = LocalDate.of(2024, 3, 15);
     when(sourceMiteClient.getTimeEntries(any(TimeEntriesRequest.class))).thenReturn(new TimeEntries());
 
-    assertThat(service.getEntriesForDate(date)).isEmpty();
+    assertThat(service.getEntriesForDate(profile, date)).isEmpty();
+  }
+
+  @Test
+  void getEntriesForDate_usesTheProfilesMiteInstance() {
+    LocalDate date = LocalDate.of(2024, 3, 15);
+    Profile targetProfile = profile("target", "33333", "44444");
+    when(targetMiteClient.getTimeEntries(any(TimeEntriesRequest.class))).thenReturn(new TimeEntries());
+
+    service.getEntriesForDate(targetProfile, date);
+
+    verify(targetMiteClient).getTimeEntries(any(TimeEntriesRequest.class));
+    verifyNoInteractions(sourceMiteClient);
   }
 
   @Test
@@ -89,7 +112,7 @@ class MiteBookingServiceTest {
 
     when(sourceMiteClient.createTimeEntry(any(TimeEntry.class))).thenReturn(created);
 
-    BookingResultModel result = service.book(date, List.of(pe));
+    BookingResultModel result = service.book(profile, date, List.of(pe));
 
     assertThat(result.getDate()).isEqualTo(date);
     assertThat(result.getCreated()).hasSize(1);
@@ -101,6 +124,23 @@ class MiteBookingServiceTest {
   }
 
   @Test
+  void book_usesTheProfilesMiteInstance() {
+    LocalDate date = LocalDate.of(2024, 3, 15);
+    Profile targetProfile = profile("target", "33333", "44444");
+    ProposalEntryModel pe = new ProposalEntryModel(60, "Work", "main-pbi-fill", null, null);
+
+    when(targetMiteClient.createTimeEntry(any(TimeEntry.class))).thenReturn(new TimeEntry());
+
+    BookingResultModel result = service.book(targetProfile, date, List.of(pe));
+
+    assertThat(result.getCreated()).hasSize(1);
+    assertThat(result.getCreated().get(0).getProjectId()).isEqualTo(33333L);
+    assertThat(result.getCreated().get(0).getServiceId()).isEqualTo(44444L);
+    verify(targetMiteClient).createTimeEntry(any(TimeEntry.class));
+    verifyNoInteractions(sourceMiteClient);
+  }
+
+  @Test
   void book_multipleEntries_sumsMinutes() {
     LocalDate date = LocalDate.of(2024, 3, 15);
     ProposalEntryModel pe1 = new ProposalEntryModel(60, "Entry 1", "calendar", null, null);
@@ -108,7 +148,7 @@ class MiteBookingServiceTest {
 
     when(sourceMiteClient.createTimeEntry(any(TimeEntry.class))).thenReturn(new TimeEntry());
 
-    BookingResultModel result = service.book(date, List.of(pe1, pe2));
+    BookingResultModel result = service.book(profile, date, List.of(pe1, pe2));
 
     assertThat(result.getTotalMinutesCreated()).isEqualTo(180);
     assertThat(result.getCreated()).hasSize(2);
@@ -122,7 +162,7 @@ class MiteBookingServiceTest {
     when(sourceMiteClient.createTimeEntry(any(TimeEntry.class)))
         .thenThrow(new RuntimeException("API error"));
 
-    BookingResultModel result = service.book(date, List.of(pe));
+    BookingResultModel result = service.book(profile, date, List.of(pe));
 
     assertThat(result.getCreated()).isEmpty();
     assertThat(result.getFailed()).hasSize(1);
@@ -141,7 +181,7 @@ class MiteBookingServiceTest {
         .thenReturn(new TimeEntry())
         .thenThrow(new RuntimeException("Network error"));
 
-    BookingResultModel result = service.book(date, List.of(ok, fail));
+    BookingResultModel result = service.book(profile, date, List.of(ok, fail));
 
     assertThat(result.getCreated()).hasSize(1);
     assertThat(result.getFailed()).hasSize(1);

@@ -1,10 +1,12 @@
 package org.twittig.mite.mitesync.facade;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
@@ -15,7 +17,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.twittig.mite.mitesync.config.DailyReportProperties.Profile;
+import org.twittig.mite.mitesync.config.DailyReportProperties.WorkflowType;
+import org.twittig.mite.mitesync.config.ProfileRegistry;
+import org.twittig.mite.mitesync.config.UnknownProfileException;
 import org.twittig.mite.mitesync.service.AzureDevOpsService;
 import org.twittig.mite.mitesync.service.BookingProposalService;
 import org.twittig.mite.mitesync.service.GoogleCalendarService;
@@ -31,19 +36,30 @@ import org.twittig.mite.mitesync.web.model.WorkItemModel;
 @ExtendWith(MockitoExtension.class)
 class DailyReportFacadeTest {
 
+  @Mock private ProfileRegistry profileRegistry;
   @Mock private GoogleCalendarService googleCalendarService;
   @Mock private AzureDevOpsService azureDevOpsService;
   @Mock private MiteBookingService miteBookingService;
   @Mock private BookingProposalService bookingProposalService;
   @InjectMocks private DailyReportFacade facade;
 
+  private Profile profile;
+
   @BeforeEach
   void setUp() {
-    ReflectionTestUtils.setField(facade, "roundingStepMinutes", 15);
+    profile = new Profile();
+    profile.setWorkflowType(WorkflowType.CALENDAR_DEVOPS);
+    profile.getRules().setRoundingStepMinutes(15);
+  }
+
+  private void givenDefaultProfile() {
+    when(profileRegistry.defaultProfileKey()).thenReturn("default");
+    when(profileRegistry.resolve("default")).thenReturn(profile);
   }
 
   @Test
   void preview_populatesAllFields() {
+    givenDefaultProfile();
     LocalDate date = LocalDate.of(2024, 3, 15);
     PbiAssignmentModel pbi = new PbiAssignmentModel();
     pbi.setMainPbiId(12345);
@@ -58,10 +74,11 @@ class DailyReportFacadeTest {
     ProposalEntryModel proposal = new ProposalEntryModel(375, "Dev work", "main-pbi-fill", 12345, "My PBI");
 
     when(googleCalendarService.getEventsForDay(date, 15)).thenReturn(List.of(event));
-    when(miteBookingService.getEntriesForDate(date)).thenReturn(List.of(booked));
+    when(miteBookingService.getEntriesForDate(profile, date)).thenReturn(List.of(booked));
     when(azureDevOpsService.getWorkItemsChangedByMeOnDate(date)).thenReturn(List.of(changed));
     when(azureDevOpsService.getOpenWorkItemsAssignedToMe()).thenReturn(List.of(open));
-    when(bookingProposalService.buildProposal(any(), any(), any(), eq(pbi))).thenReturn(List.of(proposal));
+    when(bookingProposalService.buildProposal(eq(profile), any(), any(), any(), eq(pbi)))
+        .thenReturn(List.of(proposal));
 
     DailyReportModel result = facade.preview(date, pbi);
 
@@ -76,33 +93,36 @@ class DailyReportFacadeTest {
   }
 
   @Test
-  void preview_passesRoundingStepToCalendarService() {
+  void preview_passesProfileRoundingStepToCalendarService() {
+    givenDefaultProfile();
+    profile.getRules().setRoundingStepMinutes(30);
     LocalDate date = LocalDate.of(2024, 3, 15);
     PbiAssignmentModel pbi = new PbiAssignmentModel();
     pbi.setMainPbiId(12345);
 
-    when(googleCalendarService.getEventsForDay(date, 15)).thenReturn(List.of());
-    when(miteBookingService.getEntriesForDate(date)).thenReturn(List.of());
+    when(googleCalendarService.getEventsForDay(date, 30)).thenReturn(List.of());
+    when(miteBookingService.getEntriesForDate(profile, date)).thenReturn(List.of());
     when(azureDevOpsService.getWorkItemsChangedByMeOnDate(date)).thenReturn(List.of());
     when(azureDevOpsService.getOpenWorkItemsAssignedToMe()).thenReturn(List.of());
-    when(bookingProposalService.buildProposal(any(), any(), any(), any())).thenReturn(List.of());
+    when(bookingProposalService.buildProposal(any(), any(), any(), any(), any())).thenReturn(List.of());
 
     facade.preview(date, pbi);
 
-    verify(googleCalendarService).getEventsForDay(date, 15);
+    verify(googleCalendarService).getEventsForDay(date, 30);
   }
 
   @Test
   void preview_emptyProposal_totalMinutesIsZero() {
+    givenDefaultProfile();
     LocalDate date = LocalDate.of(2024, 3, 15);
     PbiAssignmentModel pbi = new PbiAssignmentModel();
     pbi.setMainPbiId(12345);
 
     when(googleCalendarService.getEventsForDay(any(), anyInt())).thenReturn(List.of());
-    when(miteBookingService.getEntriesForDate(any())).thenReturn(List.of());
+    when(miteBookingService.getEntriesForDate(eq(profile), any())).thenReturn(List.of());
     when(azureDevOpsService.getWorkItemsChangedByMeOnDate(any())).thenReturn(List.of());
     when(azureDevOpsService.getOpenWorkItemsAssignedToMe()).thenReturn(List.of());
-    when(bookingProposalService.buildProposal(any(), any(), any(), any())).thenReturn(List.of());
+    when(bookingProposalService.buildProposal(any(), any(), any(), any(), any())).thenReturn(List.of());
 
     DailyReportModel result = facade.preview(date, pbi);
 
@@ -110,18 +130,72 @@ class DailyReportFacadeTest {
   }
 
   @Test
-  void book_delegatesToMiteBookingService() {
+  void preview_resolvesTheRequestedProfile() {
+    when(profileRegistry.resolve("alpha")).thenReturn(profile);
+    LocalDate date = LocalDate.of(2024, 3, 15);
+    PbiAssignmentModel pbi = new PbiAssignmentModel();
+    pbi.setMainPbiId(12345);
+
+    when(googleCalendarService.getEventsForDay(any(), anyInt())).thenReturn(List.of());
+    when(miteBookingService.getEntriesForDate(eq(profile), any())).thenReturn(List.of());
+    when(azureDevOpsService.getWorkItemsChangedByMeOnDate(any())).thenReturn(List.of());
+    when(azureDevOpsService.getOpenWorkItemsAssignedToMe()).thenReturn(List.of());
+    when(bookingProposalService.buildProposal(any(), any(), any(), any(), any())).thenReturn(List.of());
+
+    facade.preview("alpha", date, pbi);
+
+    verify(profileRegistry).resolve("alpha");
+  }
+
+  @Test
+  void preview_unknownProfile_propagatesException() {
+    when(profileRegistry.resolve("nope")).thenThrow(new UnknownProfileException("nope"));
+
+    assertThatThrownBy(() -> facade.preview("nope", LocalDate.now(), new PbiAssignmentModel()))
+        .isInstanceOf(UnknownProfileException.class);
+    verifyNoInteractions(googleCalendarService, azureDevOpsService, miteBookingService);
+  }
+
+  @Test
+  void preview_gitActivityWorkflow_throwsUnsupported() {
+    profile.setWorkflowType(WorkflowType.GIT_ACTIVITY);
+    when(profileRegistry.resolve("git")).thenReturn(profile);
+
+    assertThatThrownBy(() -> facade.preview("git", LocalDate.now(), new PbiAssignmentModel()))
+        .isInstanceOf(UnsupportedWorkflowException.class)
+        .hasMessageContaining("GIT_ACTIVITY");
+    verifyNoInteractions(googleCalendarService, azureDevOpsService, miteBookingService);
+  }
+
+  @Test
+  void book_delegatesToMiteBookingServiceWithDefaultProfile() {
+    givenDefaultProfile();
     LocalDate date = LocalDate.of(2024, 3, 15);
     List<ProposalEntryModel> entries = List.of(
         new ProposalEntryModel(90, "Work", "main-pbi-fill", 1, "PBI"));
     BookingResultModel expected = new BookingResultModel();
     expected.setDate(date);
 
-    when(miteBookingService.book(date, entries)).thenReturn(expected);
+    when(miteBookingService.book(profile, date, entries)).thenReturn(expected);
 
     BookingResultModel result = facade.book(date, entries);
 
     assertThat(result).isSameAs(expected);
-    verify(miteBookingService).book(date, entries);
+    verify(miteBookingService).book(profile, date, entries);
+  }
+
+  @Test
+  void book_resolvesTheRequestedProfile() {
+    when(profileRegistry.resolve("alpha")).thenReturn(profile);
+    LocalDate date = LocalDate.of(2024, 3, 15);
+    List<ProposalEntryModel> entries = List.of(
+        new ProposalEntryModel(90, "Work", "main-pbi-fill", 1, "PBI"));
+    BookingResultModel expected = new BookingResultModel();
+
+    when(miteBookingService.book(profile, date, entries)).thenReturn(expected);
+
+    BookingResultModel result = facade.book("alpha", date, entries);
+
+    assertThat(result).isSameAs(expected);
   }
 }

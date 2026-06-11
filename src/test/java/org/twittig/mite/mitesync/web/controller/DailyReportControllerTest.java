@@ -18,7 +18,10 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.twittig.mite.mitesync.config.DailyReportProperties.WorkflowType;
+import org.twittig.mite.mitesync.config.UnknownProfileException;
 import org.twittig.mite.mitesync.facade.DailyReportFacade;
+import org.twittig.mite.mitesync.facade.UnsupportedWorkflowException;
 import org.twittig.mite.mitesync.web.model.BookingResultModel;
 import org.twittig.mite.mitesync.web.model.CalendarEventModel;
 import org.twittig.mite.mitesync.web.model.DailyReportModel;
@@ -108,6 +111,52 @@ class DailyReportControllerTest {
                 .andExpect(jsonPath("$.proposal[0].source").value("main-pbi-fill"));
     }
 
+    // -------- POST /daily-reports/{project}/{date}/preview --------
+
+    @Test
+    void preview_withProject_passes_profile_to_facade() throws Exception {
+        DailyReportModel report = buildReport(LocalDate.of(2025, 4, 28));
+        when(facade.preview(eq("alpha"), eq(LocalDate.of(2025, 4, 28)), any())).thenReturn(report);
+
+        mockMvc.perform(post("/daily-reports/alpha/2025-04-28/preview")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"mainPbiId": 12345}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.date").value("2025-04-28"));
+
+        verify(facade).preview(eq("alpha"), eq(LocalDate.of(2025, 4, 28)), any());
+    }
+
+    @Test
+    void preview_unknownProject_returns_404() throws Exception {
+        when(facade.preview(eq("nope"), any(), any()))
+                .thenThrow(new UnknownProfileException("nope"));
+
+        mockMvc.perform(post("/daily-reports/nope/2025-04-28/preview")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"mainPbiId": 12345}
+                                """))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.project").value("Unknown project profile 'nope'"));
+    }
+
+    @Test
+    void preview_unimplementedWorkflow_returns_501() throws Exception {
+        when(facade.preview(eq("gitproject"), any(), any()))
+                .thenThrow(new UnsupportedWorkflowException(WorkflowType.GIT_ACTIVITY));
+
+        mockMvc.perform(post("/daily-reports/gitproject/2025-04-28/preview")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"mainPbiId": 12345}
+                                """))
+                .andExpect(status().isNotImplemented())
+                .andExpect(jsonPath("$.workflow").exists());
+    }
+
     // -------- POST /daily-reports/{date}/book --------
 
     @Test
@@ -182,6 +231,38 @@ class DailyReportControllerTest {
                 .andExpect(jsonPath("$.failed[0].note").value("#12345 Feature XY"))
                 .andExpect(jsonPath("$.failed[0].error").value("Connection refused"))
                 .andExpect(jsonPath("$.totalMinutesCreated").value(0));
+    }
+
+    // -------- POST /daily-reports/{project}/{date}/book --------
+
+    @Test
+    void book_withProject_passes_profile_to_facade() throws Exception {
+        BookingResultModel result = buildBookingResult(LocalDate.of(2025, 4, 28), 375);
+        when(facade.book(eq("alpha"), eq(LocalDate.of(2025, 4, 28)), any())).thenReturn(result);
+
+        mockMvc.perform(post("/daily-reports/alpha/2025-04-28/book")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"entries": [{"minutes": 375, "note": "#12345 Feature XY"}]}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalMinutesCreated").value(375));
+
+        verify(facade).book(eq("alpha"), eq(LocalDate.of(2025, 4, 28)), any());
+    }
+
+    @Test
+    void book_unknownProject_returns_404() throws Exception {
+        when(facade.book(eq("nope"), any(), any()))
+                .thenThrow(new UnknownProfileException("nope"));
+
+        mockMvc.perform(post("/daily-reports/nope/2025-04-28/book")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"entries": [{"minutes": 375, "note": "#12345 Feature XY"}]}
+                                """))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.project").exists());
     }
 
     // -------- Helpers --------

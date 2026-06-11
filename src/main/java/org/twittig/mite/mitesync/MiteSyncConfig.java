@@ -2,10 +2,13 @@ package org.twittig.mite.mitesync;
 
 import io.seventytwo.oss.mite.MiteClient;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.twittig.mite.mitesync.config.DailyReportProperties;
 
 @Configuration
+@EnableConfigurationProperties(DailyReportProperties.class)
 public class MiteSyncConfig {
 
   @Value("${mite-sync.source.host}")

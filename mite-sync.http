@@ -8,8 +8,17 @@ Content-Type: application/json
   "to" : "31.05.2026"
 }
 
-### Generate a daily-report proposal
+### Generate a daily-report proposal (default profile)
 POST http://localhost:8080/daily-reports/2026-05-04/preview
+Content-Type: application/json
+
+{
+  "mainPbiId": 12345,
+  "targetHours": 6.25
+}
+
+### Generate a daily-report proposal for a specific project profile
+POST http://localhost:8080/daily-reports/default/2026-05-04/preview
 Content-Type: application/json
 
 {
@@ -24,6 +33,16 @@ Content-Type: application/json
 {
   "entries": [
     { "minutes": 15, "note": "#1234 Team Daily" },
+    { "minutes": 360, "note": "#12345 Feature XY" }
+  ]
+}
+
+### Book the daily-report for a specific project profile
+POST http://localhost:8080/daily-reports/default/2026-05-04/book
+Content-Type: application/json
+
+{
+  "entries": [
     { "minutes": 360, "note": "#12345 Feature XY" }
   ]
 }

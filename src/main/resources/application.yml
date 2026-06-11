@@ -44,9 +44,32 @@ daily-reports:
     organization: ""
     project: ""
     pat: ""
+  # Legacy rule keys — kept as the env-var override surface (DAILY_REPORTS_RULES_*,
+  # see docker-compose.yml). The default profile below references them via placeholders.
   rules:
     # The daily is always booked at daily-fixed-minutes, regardless of calendar duration
     daily-event-summary: "Team Daily"
     daily-fixed-minutes: 15
     # Other meetings: rounded up to the next rounding-step-minutes
     rounding-step-minutes: 15
+
+  # Project profiles: each profile selects a workflow type, the Mite instance to book into and
+  # the booking rules. The profile key is the {project} path segment of the daily-report
+  # endpoints; the legacy routes without a project use default-profile.
+  default-profile: "default"
+  profiles:
+    default:
+      # calendar-devops: Google Calendar + Azure DevOps + fill-up onto a main PBI.
+      # git-activity: proposal derived from local git history (not implemented yet).
+      workflow-type: "calendar-devops"
+      # Which configured Mite instance to read from and book into ("source" or "target")
+      mite-instance: "source"
+      project-id: "${mite-sync.source.project-id}"
+      service-id: "${mite-sync.source.service-id}"
+      meeting-collector-pbi: "${mite-sync.source.meeting-collector-pbi}"
+      rules:
+        daily-event-summary: "${daily-reports.rules.daily-event-summary}"
+        daily-fixed-minutes: "${daily-reports.rules.daily-fixed-minutes}"
+        rounding-step-minutes: "${daily-reports.rules.rounding-step-minutes}"
+        # Daily booking target when the request body does not override it (375 min = 6.25 h)
+        target-minutes: 375
