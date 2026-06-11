@@ -18,10 +18,9 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.twittig.mite.mitesync.config.DailyReportProperties.WorkflowType;
 import org.twittig.mite.mitesync.config.UnknownProfileException;
 import org.twittig.mite.mitesync.facade.DailyReportFacade;
-import org.twittig.mite.mitesync.facade.UnsupportedWorkflowException;
+import org.twittig.mite.mitesync.facade.MissingMainPbiException;
 import org.twittig.mite.mitesync.web.model.BookingResultModel;
 import org.twittig.mite.mitesync.web.model.CalendarEventModel;
 import org.twittig.mite.mitesync.web.model.DailyReportModel;
@@ -73,7 +72,10 @@ class DailyReportControllerTest {
     }
 
     @Test
-    void preview_returns_400_when_mainPbiId_missing() throws Exception {
+    void preview_returns_400_when_mainPbiId_missing_for_calendar_profile() throws Exception {
+        // The constraint is enforced in the facade (git-activity profiles need no main PBI)
+        when(facade.preview(any(), any())).thenThrow(new MissingMainPbiException());
+
         mockMvc.perform(post("/daily-reports/2025-04-28/preview")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
@@ -144,17 +146,16 @@ class DailyReportControllerTest {
     }
 
     @Test
-    void preview_unimplementedWorkflow_returns_501() throws Exception {
-        when(facade.preview(eq("gitproject"), any(), any()))
-                .thenThrow(new UnsupportedWorkflowException(WorkflowType.GIT_ACTIVITY));
+    void preview_gitProfile_acceptsBodyWithoutMainPbiId() throws Exception {
+        when(facade.preview(eq("gitproject"), eq(LocalDate.of(2025, 4, 28)), any()))
+                .thenReturn(buildReport(LocalDate.of(2025, 4, 28)));
 
         mockMvc.perform(post("/daily-reports/gitproject/2025-04-28/preview")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"mainPbiId": 12345}
+                                {"targetHours": 4.0}
                                 """))
-                .andExpect(status().isNotImplemented())
-                .andExpect(jsonPath("$.workflow").exists());
+                .andExpect(status().isOk());
     }
 
     // -------- POST /daily-reports/{date}/book --------

@@ -1,14 +1,15 @@
 package org.twittig.mite.mitesync.web.model;
 
-import jakarta.validation.constraints.NotNull;
-
 /**
  * PBI assignment: identifies the main work PBI for a day. Sent in the request body of
- * POST /daily-reports/{date}/preview.
+ * POST /daily-reports/{project}/{date}/preview.
  */
 public class PbiAssignmentModel {
 
-  @NotNull(message = "mainPbiId must not be null")
+  /**
+   * Required for calendar-devops profiles (enforced in the facade — git-activity profiles do not
+   * use a main PBI).
+   */
   private Integer mainPbiId;
 
   /** Daily target in hours. When null, the service falls back to the default (6.25h). */

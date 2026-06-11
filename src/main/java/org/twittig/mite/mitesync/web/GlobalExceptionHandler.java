@@ -9,7 +9,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.twittig.mite.mitesync.config.UnknownProfileException;
-import org.twittig.mite.mitesync.facade.UnsupportedWorkflowException;
+import org.twittig.mite.mitesync.facade.MissingMainPbiException;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -31,10 +31,8 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("project", ex.getMessage()));
   }
 
-  @ExceptionHandler(UnsupportedWorkflowException.class)
-  public ResponseEntity<Map<String, String>> handleUnsupportedWorkflow(
-      UnsupportedWorkflowException ex) {
-    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED)
-        .body(Map.of("workflow", ex.getMessage()));
+  @ExceptionHandler(MissingMainPbiException.class)
+  public ResponseEntity<Map<String, String>> handleMissingMainPbi(MissingMainPbiException ex) {
+    return ResponseEntity.badRequest().body(Map.of("mainPbiId", ex.getMessage()));
   }
 }

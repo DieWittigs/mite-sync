@@ -38,9 +38,11 @@ Hosts and credentials come from env vars (`MITE_SYNC_SOURCE_*` / `MITE_SYNC_TARG
 
 ### Workflow 2 — `/daily-reports/{project}/{date}/preview` and `/book`
 
-Daily reports are **profile-based**: the `{project}` path segment selects a profile from `daily-reports.profiles.*` (`DailyReportProperties` → `ProfileRegistry`). A profile defines the workflow type (`calendar-devops` implemented; `git-activity` reserved, returns 501), the Mite instance + project/service ids, and the booking rules (daily summary/minutes, rounding step, target minutes). Legacy routes without a project segment use `daily-reports.default-profile`; unknown keys → 404 (`GlobalExceptionHandler`).
+Daily reports are **profile-based**: the `{project}` path segment selects a profile from `daily-reports.profiles.*` (`DailyReportProperties` → `ProfileRegistry`). A profile defines the workflow type, the Mite instance + project/service ids, and the booking rules (daily summary/minutes, rounding step, target minutes). Legacy routes without a project segment use `daily-reports.default-profile`; unknown keys → 404 (`GlobalExceptionHandler`).
 
-The `git-activity` source already exists but is not wired into the facade yet (issue #3): `GitActivityService` (thin JGit I/O, reads all branches of the profile's local repos with author filter, tested against temp repos) + `GitActivityEstimator` (pure logic; session-based duration heuristic documented in its Javadoc and HELP.md, configured via the profile's `git.*` block).
+Two workflow types exist (switch in `DailyReportFacade`):
+- **`calendar-devops`** — Google Calendar + Azure DevOps + fill-up onto a main PBI. `mainPbiId` is required, but enforced in the facade (`MissingMainPbiException` → 400), NOT via bean validation — git-activity profiles share the same request body and don't use it.
+- **`git-activity`** — proposal derived purely from local git history; calendar/DevOps services are not touched (their lazy init stays untriggered). `GitActivityService` (thin JGit I/O, reads all branches of the profile's local repos with author filter, tested against temp repos) → `GitActivityEstimator` (pure logic; session-based duration heuristic documented in its Javadoc and HELP.md, configured via the profile's `git.*` block) → `BookingProposalService.buildGitProposal` (duplicate guard against already-booked notes; opt-in fill-up to the daily target via `git.fill-up-ticket`, default is to book only what the history shows). The preview returns the day's commits in `gitCommits` as evidence.
 
 `DailyReportController` → `DailyReportFacade`, which resolves the profile and (for `calendar-devops`) fans out to four services and composes a proposal:
 1. `GoogleCalendarService` — meetings of the day (rounded up to 15-min steps)

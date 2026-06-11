@@ -46,3 +46,22 @@ Content-Type: application/json
     { "minutes": 360, "note": "#12345 Feature XY" }
   ]
 }
+
+### Preview for a git-activity profile (no mainPbiId needed — tickets come from commit messages)
+POST http://localhost:8080/daily-reports/my-project/2026-05-04/preview
+Content-Type: application/json
+
+{
+  "targetHours": 4.0
+}
+
+### Book the git-activity proposal (entries from preview, edited if needed)
+POST http://localhost:8080/daily-reports/my-project/2026-05-04/book
+Content-Type: application/json
+
+{
+  "entries": [
+    { "minutes": 90, "note": "#VC-123 Fix the thing" },
+    { "minutes": 60, "note": "#VC-124 Other work" }
+  ]
+}

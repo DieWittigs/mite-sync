@@ -23,6 +23,9 @@ import org.twittig.mite.mitesync.config.ProfileRegistry;
 import org.twittig.mite.mitesync.config.UnknownProfileException;
 import org.twittig.mite.mitesync.service.AzureDevOpsService;
 import org.twittig.mite.mitesync.service.BookingProposalService;
+import org.twittig.mite.mitesync.service.GitActivityEstimator;
+import org.twittig.mite.mitesync.service.GitActivityService;
+import org.twittig.mite.mitesync.service.GitCommit;
 import org.twittig.mite.mitesync.service.GoogleCalendarService;
 import org.twittig.mite.mitesync.service.MiteBookingService;
 import org.twittig.mite.mitesync.web.model.BookingResultModel;
@@ -41,6 +44,8 @@ class DailyReportFacadeTest {
   @Mock private AzureDevOpsService azureDevOpsService;
   @Mock private MiteBookingService miteBookingService;
   @Mock private BookingProposalService bookingProposalService;
+  @Mock private GitActivityService gitActivityService;
+  @Mock private GitActivityEstimator gitActivityEstimator;
   @InjectMocks private DailyReportFacade facade;
 
   private Profile profile;
@@ -157,14 +162,70 @@ class DailyReportFacadeTest {
   }
 
   @Test
-  void preview_gitActivityWorkflow_throwsUnsupported() {
+  void preview_calendarDevops_withoutMainPbi_throws() {
+    when(profileRegistry.resolve("alpha")).thenReturn(profile);
+
+    assertThatThrownBy(() -> facade.preview("alpha", LocalDate.now(), new PbiAssignmentModel()))
+        .isInstanceOf(MissingMainPbiException.class);
+    verifyNoInteractions(googleCalendarService, azureDevOpsService, miteBookingService);
+  }
+
+  // -------- git-activity workflow --------
+
+  @Test
+  void preview_gitActivity_composesReportWithoutTouchingCalendarOrDevOps() {
     profile.setWorkflowType(WorkflowType.GIT_ACTIVITY);
     when(profileRegistry.resolve("git")).thenReturn(profile);
+    LocalDate date = LocalDate.of(2024, 3, 15);
 
-    assertThatThrownBy(() -> facade.preview("git", LocalDate.now(), new PbiAssignmentModel()))
-        .isInstanceOf(UnsupportedWorkflowException.class)
-        .hasMessageContaining("GIT_ACTIVITY");
-    verifyNoInteractions(googleCalendarService, azureDevOpsService, miteBookingService);
+    GitCommit commit =
+        new GitCommit(
+            date.atTime(9, 30).atZone(java.time.ZoneId.systemDefault()).toInstant(),
+            "VC-1: Fix the thing",
+            "Dev");
+    MiteEntryModel booked = new MiteEntryModel(1L, 60, "Previous", 11L, 22L);
+    ProposalEntryModel estimated = new ProposalEntryModel(60, "#VC-1 Fix the thing", "git", null, null);
+    ProposalEntryModel proposed = new ProposalEntryModel(60, "#VC-1 Fix the thing", "git", null, null);
+
+    when(gitActivityService.getCommitsForDay(profile.getGit(), date)).thenReturn(List.of(commit));
+    when(miteBookingService.getEntriesForDate(profile, date)).thenReturn(List.of(booked));
+    when(gitActivityEstimator.estimate(List.of(commit), profile.getGit(), 15))
+        .thenReturn(List.of(estimated));
+    when(bookingProposalService.buildGitProposal(profile, List.of(estimated), List.of(booked), null))
+        .thenReturn(List.of(proposed));
+
+    // No mainPbiId — not required for git-activity profiles
+    DailyReportModel result = facade.preview("git", date, new PbiAssignmentModel());
+
+    assertThat(result.getDate()).isEqualTo(date);
+    assertThat(result.getProposal()).containsExactly(proposed);
+    assertThat(result.getProposalTotalMinutes()).isEqualTo(60);
+    assertThat(result.getAlreadyBookedInMite()).containsExactly(booked);
+    assertThat(result.getCalendarEvents()).isEmpty();
+    assertThat(result.getDevOpsActivityOnDate()).isEmpty();
+    assertThat(result.getOpenWorkItems()).isEmpty();
+    assertThat(result.getGitCommits()).hasSize(1);
+    assertThat(result.getGitCommits().get(0).getTime()).isEqualTo("09:30");
+    assertThat(result.getGitCommits().get(0).getSubject()).isEqualTo("VC-1: Fix the thing");
+    verifyNoInteractions(googleCalendarService, azureDevOpsService);
+  }
+
+  @Test
+  void preview_gitActivity_passesTargetHoursOverrideToProposal() {
+    profile.setWorkflowType(WorkflowType.GIT_ACTIVITY);
+    when(profileRegistry.resolve("git")).thenReturn(profile);
+    LocalDate date = LocalDate.of(2024, 3, 15);
+    PbiAssignmentModel pbi = new PbiAssignmentModel();
+    pbi.setTargetHours(4.0);
+
+    when(gitActivityService.getCommitsForDay(any(), any())).thenReturn(List.of());
+    when(miteBookingService.getEntriesForDate(eq(profile), any())).thenReturn(List.of());
+    when(gitActivityEstimator.estimate(any(), any(), anyInt())).thenReturn(List.of());
+    when(bookingProposalService.buildGitProposal(any(), any(), any(), any())).thenReturn(List.of());
+
+    facade.preview("git", date, pbi);
+
+    verify(bookingProposalService).buildGitProposal(eq(profile), any(), any(), eq(4.0));
   }
 
   @Test

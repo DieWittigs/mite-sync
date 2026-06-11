@@ -73,9 +73,8 @@ daily-reports:
         rounding-step-minutes: "${daily-reports.rules.rounding-step-minutes}"
         # Daily booking target when the request body does not override it (375 min = 6.25 h)
         target-minutes: 375
-    # Example of a git-activity profile (endpoint wiring lands with issue #3):
-    # the proposal is derived purely from local git history — commit days/timestamps estimate
-    # the duration, commit-message prefixes identify the tickets.
+    # Example of a git-activity profile: the proposal is derived purely from local git history —
+    # commit days/timestamps estimate the duration, commit-message prefixes identify the tickets.
     #
     # my-project:
     #   workflow-type: "git-activity"
@@ -92,3 +91,5 @@ daily-reports:
     #     session-gap-minutes: 90            # larger gaps split the day into sessions
     #     lead-in-minutes: 30                # added per session for work before the first commit
     #     fallback-ticket: ""                # bucket for commits without a ticket id
+    #     fill-up-ticket: ""                 # set to fill the gap to the daily target on this ticket
+    #     fill-up-note: "Development"        # note text of the fill-up entry
