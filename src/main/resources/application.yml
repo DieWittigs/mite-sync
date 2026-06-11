@@ -60,7 +60,7 @@ daily-reports:
   profiles:
     default:
       # calendar-devops: Google Calendar + Azure DevOps + fill-up onto a main PBI.
-      # git-activity: proposal derived from local git history (not implemented yet).
+      # git-activity: proposal derived from local git history.
       workflow-type: "calendar-devops"
       # Which configured Mite instance to read from and book into ("source" or "target")
       mite-instance: "source"
