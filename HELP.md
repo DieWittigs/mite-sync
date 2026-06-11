@@ -14,14 +14,13 @@ The `{project}` path segment selects a profile from `daily-reports.profiles.*` i
 `application.yml`. A profile defines:
 
 - the **workflow type**: `calendar-devops` (Google Calendar + Azure DevOps + fill-up onto a main
-  PBI) or `git-activity` (proposal derived from local git history — not implemented yet)
+  PBI) or `git-activity` (proposal derived from local git history)
 - the **Mite instance** (`source` or `target`) that already-booked entries are read from and new
   entries are booked into, plus the Mite `project-id`/`service-id`
 - the **rules**: daily-event summary and fixed minutes, rounding step, daily target minutes
 
 The legacy routes without a project segment (`/daily-reports/{date}/preview`) use the profile
-named by `daily-reports.default-profile`. Unknown project keys return 404; profiles whose
-workflow type is not implemented yet return 501.
+named by `daily-reports.default-profile`. Unknown project keys return 404.
 
 ### Git activity estimation
 
