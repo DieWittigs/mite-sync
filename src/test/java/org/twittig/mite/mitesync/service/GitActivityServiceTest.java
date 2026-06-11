@@ -9,7 +9,14 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.lib.CommitBuilder;
+import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.ObjectInserter;
 import org.eclipse.jgit.lib.PersonIdent;
+import org.eclipse.jgit.lib.RefUpdate;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevWalk;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -53,6 +60,34 @@ class GitActivityServiceTest {
         .setCommitter(ident)
         .setMessage(message)
         .call();
+  }
+
+  /**
+   * Creates a real two-parent merge commit on the current branch with a controlled timestamp.
+   * JGit's {@code git.merge()} stamps the merge commit with the current wall-clock time, which
+   * would fall outside the fixed test day — so the merge is built low-level instead.
+   */
+  private static void mergeCommit(
+      Git git, String message, String email, Instant time, ObjectId parent1, ObjectId parent2)
+      throws Exception {
+    Repository repo = git.getRepository();
+    PersonIdent ident = new PersonIdent("Dev", email, time, ZONE);
+    try (RevWalk walk = new RevWalk(repo);
+        ObjectInserter inserter = repo.newObjectInserter()) {
+      RevCommit firstParent = walk.parseCommit(parent1);
+      CommitBuilder builder = new CommitBuilder();
+      builder.setTreeId(firstParent.getTree()); // no content change, reuse the first parent's tree
+      builder.setParentIds(parent1, parent2);
+      builder.setAuthor(ident);
+      builder.setCommitter(ident);
+      builder.setMessage(message);
+      ObjectId mergeId = inserter.insert(builder);
+      inserter.flush();
+      RefUpdate refUpdate = repo.updateRef(repo.getFullBranch());
+      refUpdate.setNewObjectId(mergeId);
+      refUpdate.setForceUpdate(true);
+      refUpdate.update();
+    }
   }
 
   @Test
@@ -130,6 +165,51 @@ class GitActivityServiceTest {
     assertThat(result)
         .extracting(GitCommit::subjectLine)
         .contains("VC-1: On main", "VC-2: On branch");
+  }
+
+  @Test
+  void mergeCommits_areExcluded() throws Exception {
+    try (Git git = initRepo("repo")) {
+      commit(git, "VC-1: Base on main", "Dev", "dev@example.org", at(DAY, 9, 0));
+      ObjectId mainTip = git.getRepository().resolve("HEAD");
+      git.checkout().setCreateBranch(true).setName("feature/VC-2").call();
+      commit(git, "VC-2: Feature work", "Dev", "dev@example.org", at(DAY, 10, 0));
+      ObjectId featureTip = git.getRepository().resolve("HEAD");
+      mergeCommit(
+          git,
+          "Merged in feature/VC-2-feature-work (pull request #1)",
+          "dev@example.org",
+          at(DAY, 11, 0),
+          featureTip,
+          mainTip);
+    }
+
+    List<GitCommit> result = service.getCommitsForDay(config, DAY);
+
+    assertThat(result)
+        .extracting(GitCommit::subjectLine)
+        .containsExactlyInAnyOrder("VC-1: Base on main", "VC-2: Feature work");
+  }
+
+  @Test
+  void dayWithOnlyMergeCommits_returnsEmptyList() throws Exception {
+    try (Git git = initRepo("repo")) {
+      // Base and feature commits live on the day before; only the merge lands on DAY.
+      commit(git, "VC-1: Base on main", "Dev", "dev@example.org", at(DAY.minusDays(1), 9, 0));
+      ObjectId mainTip = git.getRepository().resolve("HEAD");
+      git.checkout().setCreateBranch(true).setName("feature/VC-2").call();
+      commit(git, "VC-2: Feature work", "Dev", "dev@example.org", at(DAY.minusDays(1), 10, 0));
+      ObjectId featureTip = git.getRepository().resolve("HEAD");
+      mergeCommit(
+          git,
+          "Merged in feature/VC-2-feature-work (pull request #1)",
+          "dev@example.org",
+          at(DAY, 11, 0),
+          featureTip,
+          mainTip);
+    }
+
+    assertThat(service.getCommitsForDay(config, DAY)).isEmpty();
   }
 
   @Test

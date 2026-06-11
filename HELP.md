@@ -26,7 +26,9 @@ named by `daily-reports.default-profile`. Unknown project keys return 404.
 
 For `git-activity` profiles the proposal is derived from the commit history of locally
 checked-out repositories (`git.repositories`, all branches, optional `git.author` filter).
-The duration heuristic:
+Merge commits are not counted as work — their time already sits in the feature commits they
+bring in, and skipping them keeps branch-slug subjects out of the booking notes. The duration
+heuristic:
 
 1. The day's commits are sorted and grouped into **sessions** — a gap larger than
    `session-gap-minutes` (default 90) starts a new session.
