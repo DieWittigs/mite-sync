@@ -43,7 +43,7 @@ public class DailyReportProperties {
   public enum WorkflowType {
     /** Meetings from Google Calendar + work items from Azure DevOps + fill-up onto a main PBI. */
     CALENDAR_DEVOPS,
-    /** Proposal derived purely from local git history (issues #2/#3, not implemented yet). */
+    /** Proposal derived purely from local git history. */
     GIT_ACTIVITY
   }
 
