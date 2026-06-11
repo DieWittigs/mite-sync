@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.twittig.mite.mitesync.config.DailyReportProperties.Profile;
 import org.twittig.mite.mitesync.web.model.CalendarEventModel;
 import org.twittig.mite.mitesync.web.model.MiteEntryModel;
 import org.twittig.mite.mitesync.web.model.PbiAssignmentModel;
@@ -15,13 +15,17 @@ import org.twittig.mite.mitesync.web.model.WorkItemModel;
 class BookingProposalServiceTest {
 
     private BookingProposalService service;
+    private Profile profile;
 
     @BeforeEach
     void setUp() {
         service = new BookingProposalService();
-        ReflectionTestUtils.setField(service, "dailySummary", "Team Daily");
-        ReflectionTestUtils.setField(service, "dailyFixedMinutes", 15);
-        ReflectionTestUtils.setField(service, "meetingCollectorPbi", "1234");
+        profile = new Profile();
+        profile.setMeetingCollectorPbi("1234");
+        profile.getRules().setDailyEventSummary("Team Daily");
+        profile.getRules().setDailyFixedMinutes(15);
+        profile.getRules().setRoundingStepMinutes(15);
+        profile.getRules().setTargetMinutes(375);
     }
 
     // -------- Daily special handling --------
@@ -256,7 +260,7 @@ class BookingProposalServiceTest {
             List<MiteEntryModel> booked,
             List<WorkItemModel> workItems,
             PbiAssignmentModel pbi) {
-        return service.buildProposal(events, booked, workItems, pbi);
+        return service.buildProposal(profile, events, booked, workItems, pbi);
     }
 
     private ProposalEntryModel findDevFill(List<ProposalEntryModel> result) {

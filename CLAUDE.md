@@ -28,17 +28,19 @@ There are **two** `MiteClient` beans (`MiteSyncConfig`):
 - `sourceMiteClient` → the billing-relevant Mite where hours actually must end up
 - `targetMiteClient` → a mirror Mite instance
 
-Hosts and credentials come from env vars (`MITE_SYNC_SOURCE_*` / `MITE_SYNC_TARGET_*`). These are wired by **bean name** into services — never assume which client a service uses without checking. In particular:
-- `MiteSyncService` (used by `/sync-jobs`) reads from SOURCE and writes to TARGET (delete-then-recreate).
-- `MiteBookingService` (used by `/daily-reports/*`) reads **and writes** to SOURCE. Daily-Reports book into the billing system; `/sync-jobs` later mirrors them to TARGET.
+Hosts and credentials come from env vars (`MITE_SYNC_SOURCE_*` / `MITE_SYNC_TARGET_*`). Never assume which client a service uses without checking. In particular:
+- `MiteSyncService` (used by `/sync-jobs`) gets both clients wired by **bean name** and reads from SOURCE / writes to TARGET (delete-then-recreate).
+- `MiteBookingService` (used by `/daily-reports/*`) resolves its client at call time via `MiteClientRegistry` from the requested project profile's `mite-instance` key ("source"/"target"). The default profile books into SOURCE; `/sync-jobs` later mirrors to TARGET.
 
 ### Workflow 1 — `/sync-jobs` (classic mirror)
 
 `MiteSyncController` → `MiteSyncFacade` → `MiteSyncService`. Idempotent: deletes all TARGET entries in the date range, then recreates from SOURCE. Field translation between the two Mite instances goes through `TimeEntryConverter` (a Spring `Converter<TimeEntries.TimeEntry, TimeEntry>`), which rewrites `project-id` and `service-id` to the TARGET values from `application.yml`. Date format on this endpoint is **`dd.MM.yyyy`** (not ISO).
 
-### Workflow 2 — `/daily-reports/{date}/preview` and `/book`
+### Workflow 2 — `/daily-reports/{project}/{date}/preview` and `/book`
 
-`DailyReportController` → `DailyReportFacade`, which fans out to four services and composes a proposal:
+Daily reports are **profile-based**: the `{project}` path segment selects a profile from `daily-reports.profiles.*` (`DailyReportProperties` → `ProfileRegistry`). A profile defines the workflow type (`calendar-devops` implemented; `git-activity` reserved, returns 501), the Mite instance + project/service ids, and the booking rules (daily summary/minutes, rounding step, target minutes). Legacy routes without a project segment use `daily-reports.default-profile`; unknown keys → 404 (`GlobalExceptionHandler`).
+
+`DailyReportController` → `DailyReportFacade`, which resolves the profile and (for `calendar-devops`) fans out to four services and composes a proposal:
 1. `GoogleCalendarService` — meetings of the day (rounded up to 15-min steps)
 2. `AzureDevOpsService` — WIQL queries for "changed by me today" and "open work items assigned to me"
 3. `MiteBookingService` — already-booked entries for the day (to avoid duplicates)
@@ -46,11 +48,11 @@ Hosts and credentials come from env vars (`MITE_SYNC_SOURCE_*` / `MITE_SYNC_TARG
 
 The `preview` step is read-only and **safe to re-run**. `book` actually creates entries in SOURCE Mite. Clients are expected to call `preview`, optionally edit the returned `ProposalEntryModel` list, then post it to `book`. Date format on these endpoints is **ISO (`yyyy-MM-dd`)**.
 
-Booking rules (in `BookingProposalService`):
+Booking rules (in `BookingProposalService`, rule values come from the profile):
 - "Daily" event (configurable summary) is always booked at a fixed duration (default 15 min), regardless of calendar length.
 - Other meetings are rounded up to the next 15-min step.
 - Meeting entries get note `#<meeting-collector-pbi> <summary>`; remaining hours are filled onto the main PBI: `#<mainPbiId> <title>`.
-- `targetHours` from the request body overrides the default daily target (375 min = 6.25 h). Already-booked minutes count toward the target.
+- `targetHours` from the request body overrides the profile's daily target (default 375 min = 6.25 h). Already-booked minutes count toward the target.
 - Duplicate guard: an entry whose note matches an already-booked Mite note (case-insensitive, trimmed) is skipped.
 - `skipped` events and `declined` calendar events are filtered out; `needsAction` stays in (user removes manually before `/book`).
 

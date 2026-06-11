@@ -3,10 +3,25 @@
 The app exposes two workflows:
 
 1. **Classic sync job** (`POST /sync-jobs`): copies time entries from source to target Mite.
-2. **Daily-Reports** (`POST /daily-reports/{date}/preview` and `/book`): reads Google Calendar +
-   Azure DevOps and produces daily booking proposals for the source Mite.
+2. **Daily-Reports** (`POST /daily-reports/{project}/{date}/preview` and `/book`): builds daily
+   booking proposals and books them into the Mite instance configured for the project.
 
 Daily-Reports needs a one-time Google Calendar OAuth2 setup.
+
+## Project profiles
+
+The `{project}` path segment selects a profile from `daily-reports.profiles.*` in
+`application.yml`. A profile defines:
+
+- the **workflow type**: `calendar-devops` (Google Calendar + Azure DevOps + fill-up onto a main
+  PBI) or `git-activity` (proposal derived from local git history — not implemented yet)
+- the **Mite instance** (`source` or `target`) that already-booked entries are read from and new
+  entries are booked into, plus the Mite `project-id`/`service-id`
+- the **rules**: daily-event summary and fixed minutes, rounding step, daily target minutes
+
+The legacy routes without a project segment (`/daily-reports/{date}/preview`) use the profile
+named by `daily-reports.default-profile`. Unknown project keys return 404; profiles whose
+workflow type is not implemented yet return 501.
 
 ## Google Cloud OAuth2 setup
 

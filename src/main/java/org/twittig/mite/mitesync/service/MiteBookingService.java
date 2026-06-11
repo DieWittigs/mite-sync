@@ -10,15 +10,16 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.twittig.mite.mitesync.config.DailyReportProperties.Profile;
+import org.twittig.mite.mitesync.config.MiteClientRegistry;
 import org.twittig.mite.mitesync.web.model.BookingResultModel;
 import org.twittig.mite.mitesync.web.model.MiteEntryModel;
 import org.twittig.mite.mitesync.web.model.ProposalEntryModel;
 
 /**
- * Reads and writes time entries on the SOURCE Mite instance. Unlike {@link MiteSyncService},
- * this service writes into the source (not the target).
+ * Reads and writes time entries on the Mite instance configured in the given project profile.
+ * Unlike {@link MiteSyncService}, this service writes into the instance it reads from.
  */
 @Service
 public class MiteBookingService {
@@ -26,25 +27,20 @@ public class MiteBookingService {
   private static final Logger log = LogManager.getLogger(MiteBookingService.class);
   private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_LOCAL_DATE;
 
-  @Value("${mite-sync.source.project-id}")
-  private String sourceProjectId;
+  private final MiteClientRegistry miteClientRegistry;
 
-  @Value("${mite-sync.source.service-id}")
-  private String sourceServiceId;
-
-  private final MiteClient sourceMiteClient;
-
-  public MiteBookingService(MiteClient sourceMiteClient) {
-    this.sourceMiteClient = sourceMiteClient;
+  public MiteBookingService(MiteClientRegistry miteClientRegistry) {
+    this.miteClientRegistry = miteClientRegistry;
   }
 
-  /** Reads existing Mite entries for the given day from the source project. */
-  public List<MiteEntryModel> getEntriesForDate(LocalDate date) {
+  /** Reads existing Mite entries for the given day from the profile's project. */
+  public List<MiteEntryModel> getEntriesForDate(Profile profile, LocalDate date) {
     var entries =
-        sourceMiteClient
+        miteClientRegistry
+            .get(profile.getMiteInstance())
             .getTimeEntries(
                 new TimeEntriesRequest.Builder()
-                    .projectId(sourceProjectId)
+                    .projectId(profile.getProjectId())
                     .from(date.format(ISO))
                     .to(date.format(ISO))
                     .build())
@@ -65,11 +61,12 @@ public class MiteBookingService {
   }
 
   /**
-   * Books the supplied proposal entries for the given date in the source Mite. Each entry uses
-   * the project + service from configuration. Per-entry errors are collected and do not abort
-   * the run.
+   * Books the supplied proposal entries for the given date in the profile's Mite instance. Each
+   * entry uses the project + service from the profile. Per-entry errors are collected and do not
+   * abort the run.
    */
-  public BookingResultModel book(LocalDate date, List<ProposalEntryModel> entries) {
+  public BookingResultModel book(Profile profile, LocalDate date, List<ProposalEntryModel> entries) {
+    MiteClient miteClient = miteClientRegistry.get(profile.getMiteInstance());
     BookingResultModel result = new BookingResultModel();
     result.setDate(date);
     List<MiteEntryModel> created = new ArrayList<>();
@@ -78,14 +75,14 @@ public class MiteBookingService {
 
     for (ProposalEntryModel pe : entries) {
       try {
-        TimeEntry te = buildTimeEntry(date, pe);
-        TimeEntry created1 = sourceMiteClient.createTimeEntry(te);
+        TimeEntry te = buildTimeEntry(profile, date, pe);
+        TimeEntry created1 = miteClient.createTimeEntry(te);
         MiteEntryModel m = new MiteEntryModel();
         m.setMiteId(created1 != null && created1.getId() != null ? created1.getId().getValue() : 0);
         m.setMinutes(pe.getMinutes());
         m.setNote(pe.getNote());
-        m.setProjectId(Integer.parseInt(sourceProjectId));
-        m.setServiceId(Integer.parseInt(sourceServiceId));
+        m.setProjectId(Integer.parseInt(profile.getProjectId()));
+        m.setServiceId(Integer.parseInt(profile.getServiceId()));
         created.add(m);
         totalCreated += pe.getMinutes();
       } catch (Exception e) {
@@ -100,7 +97,7 @@ public class MiteBookingService {
     return result;
   }
 
-  private TimeEntry buildTimeEntry(LocalDate date, ProposalEntryModel pe) {
+  private TimeEntry buildTimeEntry(Profile profile, LocalDate date, ProposalEntryModel pe) {
     TimeEntry te = new TimeEntry();
     te.setBillable(new TimeEntry.Billable());
 
@@ -111,11 +108,11 @@ public class MiteBookingService {
     //   DateAt.setValue(LocalDate) — not String
 
     TimeEntry.ProjectId p = new TimeEntry.ProjectId();
-    p.setValue(Integer.parseInt(sourceProjectId));
+    p.setValue(Integer.parseInt(profile.getProjectId()));
     te.setProjectId(p);
 
     TimeEntry.ServiceId s = new TimeEntry.ServiceId();
-    s.setValue(Integer.parseInt(sourceServiceId));
+    s.setValue(Integer.parseInt(profile.getServiceId()));
     te.setServiceId(s);
 
     TimeEntry.Minutes m = new TimeEntry.Minutes();
