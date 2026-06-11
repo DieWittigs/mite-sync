@@ -23,6 +23,7 @@
         <google-api-client.version>2.9.0</google-api-client.version>
         <google-oauth-client-jetty.version>1.39.0</google-oauth-client-jetty.version>
         <google-api-services-calendar.version>v3-rev20260225-2.0.0</google-api-services-calendar.version>
+        <jgit.version>7.7.0.202606012155-r</jgit.version>
         <jacoco.version>0.8.14</jacoco.version>
     </properties>
     <dependencies>
@@ -74,6 +75,13 @@
 
         <!-- Azure DevOps via plain HTTP — Java 11+ HttpClient is built-in, no dep needed.
              We add Jackson for parsing (already transitively included by spring-boot-starter-web). -->
+
+        <!-- Git activity source: reads local repositories for the git-activity workflow -->
+        <dependency>
+            <groupId>org.eclipse.jgit</groupId>
+            <artifactId>org.eclipse.jgit</artifactId>
+            <version>${jgit.version}</version>
+        </dependency>
 
         <!-- Developer plugins -->
         <dependency>

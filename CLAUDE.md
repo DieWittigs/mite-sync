@@ -40,6 +40,8 @@ Hosts and credentials come from env vars (`MITE_SYNC_SOURCE_*` / `MITE_SYNC_TARG
 
 Daily reports are **profile-based**: the `{project}` path segment selects a profile from `daily-reports.profiles.*` (`DailyReportProperties` → `ProfileRegistry`). A profile defines the workflow type (`calendar-devops` implemented; `git-activity` reserved, returns 501), the Mite instance + project/service ids, and the booking rules (daily summary/minutes, rounding step, target minutes). Legacy routes without a project segment use `daily-reports.default-profile`; unknown keys → 404 (`GlobalExceptionHandler`).
 
+The `git-activity` source already exists but is not wired into the facade yet (issue #3): `GitActivityService` (thin JGit I/O, reads all branches of the profile's local repos with author filter, tested against temp repos) + `GitActivityEstimator` (pure logic; session-based duration heuristic documented in its Javadoc and HELP.md, configured via the profile's `git.*` block).
+
 `DailyReportController` → `DailyReportFacade`, which resolves the profile and (for `calendar-devops`) fans out to four services and composes a proposal:
 1. `GoogleCalendarService` — meetings of the day (rounded up to 15-min steps)
 2. `AzureDevOpsService` — WIQL queries for "changed by me today" and "open work items assigned to me"
