@@ -49,6 +49,12 @@ public class GitActivityService {
         Iterable<RevCommit> commits =
             git.log().all().setRevFilter(CommitTimeRevFilter.between(dayStart, dayEnd)).call();
         for (RevCommit commit : commits) {
+          // Merge commits are not work of their own — the time already sits in the feature
+          // commits they bring in. Skipping them also keeps their branch-slug subject lines
+          // ("Merged in feature/...") out of the booking notes.
+          if (commit.getParentCount() > 1) {
+            continue;
+          }
           Instant when = commit.getAuthorIdent().getWhenAsInstant();
           // The rev filter works on commit time; re-check the author time against the local day.
           if (when.isBefore(dayStart) || !when.isBefore(dayEnd)) {
