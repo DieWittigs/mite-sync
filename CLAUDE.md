@@ -80,5 +80,5 @@ Google OAuth artifacts (`google-client-secret.json`, `google-tokens/`) live unde
 
 - Package root: `org.twittig.mite.mitesync`. Layering is `web.controller` → `facade` → `service` (+ `converter`, `web.model`, `web.annotation`).
 - Tests mirror the main package structure under `src/test/java`. `GoogleCalendarService` and `AzureDevOpsService` are intentionally untested (excluded from JaCoCo) because they hit live APIs — keep new external-I/O code likewise excluded only when you can't reasonably mock it, and prefer to put the testable logic into a sibling pure-logic class (the way `BookingProposalService` is split out of `DailyReportFacade`).
-- Javadoc and inline comments in this repo are in **German**. Match the existing style when editing.
+- Javadoc and inline comments in this repo are in **English**. Match the existing style when editing.
 - The CI workflow (`.github/workflows/docker.yml`) builds and pushes `mite-sync:latest` to Docker Hub on every push to `main`. No tests run in CI — `./mvnw verify` locally is the only gate.
